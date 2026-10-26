@@ -1,0 +1,122 @@
+version: "3.9"
+
+# ─── Development Orchestration ───────────────────────────────────────────────
+# During local development, run services directly with: npm run dev (from root)
+# This file provides MongoDB and is useful for CI or full-stack Docker runs.
+#
+# Quick start:
+#   docker-compose up -d mongodb     # start only the database
+#   npm run dev                       # start all services with hot-reload
+
+services:
+  # ── MongoDB ──────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: terno_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      # Remove these lines if your MONGODB_URI uses Atlas (no local auth needed)
+      MONGO_INITDB_ROOT_USERNAME: terno
+      MONGO_INITDB_ROOT_PASSWORD: terno_dev_password
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Application services (commented out — run via 'npm run dev' locally) ──
+
+  # api-gateway:
+  #   build:
+  #     context: .
+  #     dockerfile: services/api-gateway/Dockerfile
+  #   ports:
+  #     - "4000:4000"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # auth-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/auth-service/Dockerfile
+  #   ports:
+  #     - "4001:4001"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # user-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/user-service/Dockerfile
+  #   ports:
+  #     - "4002:4002"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # trip-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/trip-service/Dockerfile
+  #   ports:
+  #     - "4003:4003"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # booking-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/booking-service/Dockerfile
+  #   ports:
+  #     - "4004:4004"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # payment-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/payment-service/Dockerfile
+  #   ports:
+  #     - "4005:4005"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # notification-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/notification-service/Dockerfile
+  #   ports:
+  #     - "4006:4006"
+  #   env_file: .env
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/web/Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   env_file: apps/web/.env.local
+  #   depends_on:
+  #     - api-gateway
+
+volumes:
+  mongodb_data:
+    driver: local

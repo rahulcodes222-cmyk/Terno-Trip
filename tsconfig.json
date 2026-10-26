@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@terno/shared": ["./packages/shared/src/index.ts"],
+      "@terno/shared/*": ["./packages/shared/src/*"],
+      "@terno/shared-events": ["./services/shared-events/src/index.ts"],
+      "@terno/shared-events/*": ["./services/shared-events/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next"]
+}

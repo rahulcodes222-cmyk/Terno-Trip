@@ -1,0 +1,41 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Root scaffolding, shared packages, and event bus. Creates the monorepo skeleton that all subsequent FEATs build on: root package.json with npm workspaces, base tsconfig.json, .env.example, docker-compose.yml, README.md, packages/shared (types+schemas+utils), and services/shared-events (in-memory EventEmitter bus).",
+  "status": "completed",
+  "steps": [
+    "1. Create root package.json with 'workspaces': ['apps/*','services/*','packages/*'], scripts: { 'dev': 'concurrently (each service and web)', 'build': 'npm run build --workspaces', 'lint': 'tsc --noEmit --project tsconfig.json' }, devDependencies: concurrently, typescript, @types/node.",
+    "2. Create root tsconfig.json with strict:true, target:ES2022, module:Node16, moduleResolution:Node16, paths for @terno/shared and @terno/shared-events.",
+    "3. Create .env.example at root with: MONGODB_URI, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, INTERNAL_SERVICE_SECRET, FRONTEND_URL=http://localhost:3000, API_GATEWAY_URL=http://localhost:4000, AUTH_SERVICE_URL=http://localhost:4001, USER_SERVICE_URL=http://localhost:4002, TRIP_SERVICE_URL=http://localhost:4003, BOOKING_SERVICE_URL=http://localhost:4004, PAYMENT_SERVICE_URL=http://localhost:4005, NOTIFICATION_SERVICE_URL=http://localhost:4006, NODE_ENV=development.",
+    "4. Create .gitignore (node_modules, .env, dist, .next, *.log, .DS_Store).",
+    "5. Create docker-compose.yml with services: mongodb (mongo:7 image, port 27017, named volume), and placeholders for each app service (commented out — developer runs services directly during development).",
+    "6. Create packages/shared/package.json: name '@terno/shared', type 'module', main './dist/index.js', types './dist/index.d.ts', scripts build/dev. Add dependencies: zod.",
+    "7. Create packages/shared/tsconfig.json extending root.",
+    "8. Create packages/shared/src/types/index.ts — export all domain interfaces: IUser, ITrip, ITripItineraryDay, IBooking, IPayment, INotification, ApiResponse<T>, PaginatedResponse<T>. ITrip includes: _id, title, destination, country, description, category (enum: Adventure|Beach|Cultural|Wildlife|City|Mountain|Budget), duration (days), maxGroupSize, pricePerPerson, discountPrice?, images[], itinerary (ITripItineraryDay[]), inclusions[], exclusions[], accommodationType, difficulty (Easy|Moderate|Challenging), startDates (Date[]), availableSeats, ratingsAverage, ratingsQuantity, cancellationPolicy, isActive, createdAt, updatedAt. IBooking includes: _id, bookingRef, userId, tripId (populated ITrip), departureDate, travellers (ITraveller[]), totalAmount, status (Pending|Confirmed|Cancelled|Refunded), paymentStatus (Pending|Paid|Refunded|Failed), contactEmail, contactPhone, specialRequests?, createdAt. IPayment includes order details, provider (mock), status. INotification includes: _id, userId, title, message, type (booking|payment|system), read, createdAt.",
+    "9. Create packages/shared/src/schemas/index.ts — export Zod schemas: registerSchema (name, email, password min 8), loginSchema, updateProfileSchema, searchTripsSchema (query, category, minPrice, maxPrice, duration, page, limit), createBookingSchema (tripId, departureDate, travellers, contactEmail, contactPhone, specialRequests), paymentSchema, and all response envelope schemas.",
+    "10. Create packages/shared/src/utils/index.ts — export: createApiResponse<T>(data, message), createPaginatedResponse<T>, formatCurrency(amount, currency='INR'), generateBookingRef() (returns TERNO-XXXXXX), sleep(ms), pick(obj, keys[]).",
+    "11. Create packages/shared/src/index.ts — re-export everything from types, schemas, utils.",
+    "12. Create services/shared-events/package.json: name '@terno/shared-events', type 'module'.",
+    "13. Create services/shared-events/tsconfig.json extending root.",
+    "14. Create services/shared-events/src/EventBus.ts — singleton class wrapping Node.js EventEmitter. Methods: emit(event: string, payload: unknown): void, on(event: string, handler: Function): void, off(event: string, handler: Function): void. Export a single instance 'eventBus'. Document clearly that this is in-memory only and not durable.",
+    "15. Create services/shared-events/src/events.ts — export typed event name constants and payload interfaces: BOOKING_CREATED (BookingCreatedPayload: bookingId, userId, tripId, totalAmount, contactEmail), PAYMENT_SUCCEEDED (PaymentSucceededPayload: bookingId, paymentId, amount), PAYMENT_FAILED (PaymentFailedPayload: bookingId, reason), BOOKING_CONFIRMED (BookingConfirmedPayload: bookingId, userId), BOOKING_CANCELLED (BookingCancelledPayload: bookingId, userId).",
+    "16. Create services/shared-events/src/index.ts — re-export EventBus and events.",
+    "17. Create README.md at root with: project overview, port map table, prerequisites (Node 20+, MongoDB URI), setup steps (copy .env.example, fill MONGODB_URI, npm install, npm run dev), service descriptions, and a note about the mock payment provider."
+  ],
+  "acceptance_criteria": [
+    "Root 'npm install' completes without errors",
+    "packages/shared builds: 'cd packages/shared && npm run build' produces dist/index.js and dist/index.d.ts",
+    "services/shared-events builds: 'cd services/shared-events && npm run build' produces dist/",
+    "@terno/shared exports ITrip, IBooking, IUser, INotification, IPayment, ApiResponse, PaginatedResponse, all Zod schemas, and all utils",
+    "@terno/shared-events exports eventBus singleton and event name constants",
+    ".env.example exists with all required variable placeholders"
+  ],
+  "verification": [
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip && npm install",
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip/packages/shared && npm run build",
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip/services/shared-events && npm run build",
+    "Confirm dist/ directories exist in both packages"
+  ],
+  "blocked_reason": null,
+  "findings": "1. Used typescript@5.4.5, @types/node@20.12.12, concurrently@8.2.2, zod@3.23.8 (all pinned exact minor). 2. Root tsconfig.json uses module:Node16/moduleResolution:Node16 for ESM compatibility — each sub-package tsconfig clears the 'paths' key to avoid TypeScript complaining about missing path mappings during individual builds. 3. packages/shared tsconfig sets paths:{} to override root paths (which point to src/) so tsc resolves zod from node_modules correctly during the isolated build. 4. services/shared-events has no external runtime dependencies — only TypeScript dev deps. 5. Both packages build cleanly to dist/ with .d.ts declarations and source maps."
+}
