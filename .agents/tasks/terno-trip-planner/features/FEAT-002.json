@@ -1,0 +1,52 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Auth Service (port 4001) and User Service (port 4002). These two services are built together because user-service depends on the User model pattern established in auth-service, and both own user-related data. Auth-service owns authentication (register, login, logout, token refresh, me). User-service owns profiles and preferences. Both use the same MONGODB_URI but different database names (terno_auth, terno_users). Depends on FEAT-001.",
+  "status": "completed",
+  "steps": [
+    "1. Create services/auth-service/package.json: name '@terno/auth-service', type 'module', scripts: { dev: 'tsx watch src/index.ts', build: 'tsc', start: 'node dist/index.js' }. Dependencies: express, mongoose, jsonwebtoken, bcryptjs, zod, cookie-parser, cors, dotenv, morgan. DevDependencies: typescript, tsx, @types/express, @types/jsonwebtoken, @types/bcryptjs, @types/cookie-parser, @types/cors, @types/morgan, @types/node. Add @terno/shared as workspace dependency.",
+    "2. Create services/auth-service/tsconfig.json extending root tsconfig, outDir './dist', rootDir './src'.",
+    "3. Create services/auth-service/.env.example: PORT=4001, MONGODB_URI, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, JWT_ACCESS_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d, FRONTEND_URL=http://localhost:3000, NODE_ENV=development.",
+    "4. Create services/auth-service/src/config/env.ts — validate and export all env vars using Zod .parse() at module load; throw descriptive error if validation fails.",
+    "5. Create services/auth-service/src/config/database.ts — connect to MongoDB using mongoose.connect(env.MONGODB_URI, { dbName: 'terno_auth' }). Export connectDB() and disconnectDB(). Log connection events.",
+    "6. Create services/auth-service/src/models/User.ts — Mongoose schema with fields: name (String, required), email (String, required, unique, lowercase), password (String, required, select: false), role ('user'|'admin', default: 'user'), isVerified (Boolean, default: false), refreshTokens ([String]), createdAt, updatedAt. Pre-save hook: hash password with bcryptjs rounds=12 if modified. Instance method: comparePassword(candidate). Static method: findByEmail(email).",
+    "7. Create services/auth-service/src/utils/jwt.ts — functions: generateAccessToken(userId, role) → signed JWT exp 15m, generateRefreshToken(userId) → signed JWT exp 7d, verifyAccessToken(token), verifyRefreshToken(token). Use env secrets.",
+    "8. Create services/auth-service/src/utils/cookies.ts — setAuthCookies(res, accessToken, refreshToken): sets access_token (httpOnly, secure in prod, sameSite lax, maxAge 15min) and refresh_token (httpOnly, secure in prod, sameSite lax, maxAge 7d) cookies. clearAuthCookies(res): clears both cookies.",
+    "9. Create services/auth-service/src/middleware/authenticate.ts — Express middleware that reads access_token cookie, verifies JWT, attaches req.user = { id, role }. Returns 401 if missing or invalid.",
+    "10. Create services/auth-service/src/middleware/errorHandler.ts — global Express error handler. Handles Mongoose ValidationError (400), duplicate key error code 11000 (409 'Email already registered'), ZodError (400), JsonWebTokenError (401), generic errors (500). Returns { success: false, message, errors? } shape.",
+    "11. Create services/auth-service/src/controllers/auth.controller.ts with handlers: register(req,res,next): validate body with registerSchema, create User, generate tokens, set cookies, return 201 with user object (no password). login(req,res,next): validate, find user with password, comparePassword, generate tokens, set cookies, return 200 with user. logout(req,res,next): remove refreshToken from user.refreshTokens array, clearAuthCookies, return 200. refresh(req,res,next): read refresh_token cookie, verify, find user, check token is in refreshTokens array, rotate both tokens, return 200. me(req,res,next): return req.user from middleware (full user doc fetched from DB).",
+    "12. Create services/auth-service/src/routes/auth.routes.ts — POST /api/v1/auth/register, POST /api/v1/auth/login, POST /api/v1/auth/logout (authenticated), POST /api/v1/auth/refresh, GET /api/v1/auth/me (authenticated).",
+    "13. Create services/auth-service/src/app.ts — configure Express: cors (origin FRONTEND_URL, credentials true), cookie-parser, express.json(), morgan dev, mount auth router, health route GET /health → 200 { status:'ok', service:'auth-service' }, errorHandler last.",
+    "14. Create services/auth-service/src/index.ts — call connectDB(), then app.listen(PORT). Handle process SIGTERM/SIGINT for graceful shutdown.",
+    "15. Create services/user-service/package.json: name '@terno/user-service', type 'module'. Same dependencies pattern. Port 4002. Add @terno/shared.",
+    "16. Create services/user-service/tsconfig.json.",
+    "17. Create services/user-service/.env.example: PORT=4002, MONGODB_URI, INTERNAL_SERVICE_SECRET, FRONTEND_URL, NODE_ENV.",
+    "18. Create services/user-service/src/config/env.ts and src/config/database.ts (dbName: 'terno_users').",
+    "19. Create services/user-service/src/models/UserProfile.ts — Mongoose schema: userId (String, required, unique, indexed), name (String, required), email (String, required, unique), avatar (String, default picsum placeholder), phone (String), dateOfBirth (Date), nationality (String), preferences: { categories: [String], budget: String, notifications: Boolean default true }, createdAt, updatedAt.",
+    "20. Create services/user-service/src/middleware/serviceAuth.ts — middleware that checks x-internal-secret header matches INTERNAL_SERVICE_SECRET. Returns 403 if mismatch. Used for inter-service calls.",
+    "21. Create services/user-service/src/middleware/extractUser.ts — reads x-user-id and x-user-role headers (set by api-gateway after token validation); attaches to req.user. Returns 401 if missing.",
+    "22. Create services/user-service/src/controllers/user.controller.ts — handlers: getProfile(req,res,next): find profile by userId, return 200. updateProfile(req,res,next): validate with updateProfileSchema, upsert profile, return 200. getPreferences(req,res,next): return preferences sub-doc. updatePreferences: update preferences. Internal handler createProfile(req,res,next): called by auth-service event / api-gateway after registration — creates initial profile record.",
+    "23. Create services/user-service/src/routes/user.routes.ts — GET /api/v1/users/profile (extractUser), PUT /api/v1/users/profile (extractUser), GET /api/v1/users/preferences (extractUser), PUT /api/v1/users/preferences (extractUser). Internal: POST /api/v1/internal/users (serviceAuth) — create profile.",
+    "24. Create services/user-service/src/app.ts and src/index.ts following auth-service pattern.",
+    "25. In auth-service, after successful registration, emit BOOKING_CREATED equivalent or a USER_REGISTERED event on the shared eventBus (import from @terno/shared-events). Also make an internal HTTP POST to user-service /api/v1/internal/users to create the profile (use node's built-in fetch). Handle failure gracefully (log, don't fail the registration response)."
+  ],
+  "acceptance_criteria": [
+    "POST /api/v1/auth/register with valid body returns 201 and sets access_token and refresh_token cookies",
+    "POST /api/v1/auth/login with correct credentials returns 200 and sets cookies",
+    "GET /api/v1/auth/me with valid access_token cookie returns authenticated user",
+    "POST /api/v1/auth/logout clears cookies and returns 200",
+    "Duplicate email registration returns 409",
+    "GET /health on both services returns 200 { status: 'ok' }",
+    "GET /api/v1/users/profile with x-user-id header returns profile"
+  ],
+  "verification": [
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip/services/auth-service && npm install && npm run build",
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip/services/user-service && npm install && npm run build",
+    "Start auth-service: cd services/auth-service && npm run dev (in background)",
+    "curl -s http://localhost:4001/health — expect {status:'ok'}",
+    "curl -s http://localhost:4002/health — expect {status:'ok'}",
+    "curl -s -X POST http://localhost:4001/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"name\":\"Test\",\"email\":\"test@example.com\",\"password\":\"password123\"}' — expect 201"
+  ],
+  "blocked_reason": null,
+  "findings": "ESM/dotenv: dotenv.config() is called at the top of index.ts using a regular top-level import + immediate call pattern (import dotenv from 'dotenv'; dotenv.config();), then env.ts is imported after so process.env is populated before Zod validation runs. rootDir in service tsconfigs must be accompanied by paths:{} to override the root monorepo paths aliases; otherwise TypeScript includes source files from packages/shared which are outside rootDir and fails. @terno/shared is consumed via its compiled dist (exports field) once paths is cleared. Refresh token rotation: hashed refresh tokens stored in user.refreshTokens[]; on reuse detection (token not in array), all tokens are cleared as a security measure."
+}
