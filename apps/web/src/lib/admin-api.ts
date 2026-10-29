@@ -15,6 +15,11 @@ export async function adminDeleteTrip(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/admin/trips/${id}`);
 }
 
+export async function adminGetTripById(id: string): Promise<ITrip> {
+  const res = await apiClient.get<ApiResponse<ITrip>>(`/api/v1/admin/trips/${id}`);
+  return res.data.data;
+}
+
 export async function adminGetAllBookings(params: {
   page: number;
   limit: number;
@@ -32,15 +37,11 @@ export async function adminGetStats(): Promise<{
   totalRevenue: number;
   activeTrips: number;
 }> {
-  try {
-    const res = await apiClient.get<ApiResponse<{
-      totalTrips: number;
-      totalBookings: number;
-      totalRevenue: number;
-      activeTrips: number;
-    }>>('/api/v1/admin/stats');
-    return res.data.data;
-  } catch {
-    return { totalTrips: 0, totalBookings: 0, totalRevenue: 0, activeTrips: 0 };
-  }
+  const res = await apiClient.get<ApiResponse<{
+    totalTrips: number;
+    totalBookings: number;
+    totalRevenue: number;
+    activeTrips: number;
+  }>>('/api/v1/admin/stats');
+  return res.data.data;
 }

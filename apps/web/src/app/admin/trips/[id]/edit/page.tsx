@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { adminUpdateTrip } from '@/lib/admin-api';
-import { useTrips } from '@/hooks/useTrips';
+import { useQuery } from '@tanstack/react-query';
+import { adminUpdateTrip, adminGetTripById } from '@/lib/admin-api';
 import TripForm from '@/components/admin/TripForm';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
@@ -28,10 +28,12 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
 
-  // Fetch all trips and find by _id (public API is slug-based only)
-  const { data, isLoading } = useTrips({ limit: 200 });
-  const trips = data?.data ?? [];
-  const trip = trips.find((t) => t._id === params.id);
+  // Fetch the specific trip by ID via the admin endpoint
+  const { data: trip, isLoading, isError } = useQuery<ITrip>({
+    queryKey: ['admin', 'trip', params.id],
+    queryFn: () => adminGetTripById(params.id),
+    retry: false,
+  });
 
   const handleSubmit = async (data: Partial<ITrip>) => {
     setIsSubmitting(true);
@@ -50,7 +52,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
     return <LoadingSpinner fullPage />;
   }
 
-  if (!trip) {
+  if (isError || !trip) {
     return (
       <div className="p-6 md:p-8">
         <EmptyState

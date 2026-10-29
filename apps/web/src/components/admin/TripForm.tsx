@@ -31,7 +31,20 @@ const tripFormSchema = z.object({
   cancellationPolicy: z.string().min(5, 'Cancellation policy must be at least 5 characters'),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
-  startDates: z.string(),
+  startDates: z.string().refine(
+    (val) => {
+      if (!val.trim()) return true; // empty is allowed
+      return val
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .every((token) => {
+          const d = new Date(token);
+          return !isNaN(d.getTime());
+        });
+    },
+    { message: 'Each date must be a valid ISO date string (e.g. 2025-01-15)' }
+  ),
 });
 
 export type TripFormData = z.infer<typeof tripFormSchema>;
@@ -383,7 +396,11 @@ export default function TripForm({
           placeholder="2025-01-15, 2025-02-10, 2025-03-05"
           {...register('startDates')}
         />
-        <p className="mt-1 text-xs text-gray-500">Comma-separated ISO date strings</p>
+        {errors.startDates ? (
+          <p className="mt-1 text-xs text-red-600">{errors.startDates.message}</p>
+        ) : (
+          <p className="mt-1 text-xs text-gray-500">Comma-separated ISO date strings</p>
+        )}
       </div>
 
       {/* Checkboxes + submit */}

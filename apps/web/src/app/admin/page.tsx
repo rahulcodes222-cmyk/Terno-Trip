@@ -18,9 +18,10 @@ export default function AdminDashboardPage() {
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // ── Stats ─────────────────────────────────────────────────────────────────
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: adminGetStats,
   });
@@ -33,12 +34,16 @@ export default function AdminDashboardPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
+    setDeleteError('');
     try {
       await adminDeleteTrip(deleteId);
       queryClient.invalidateQueries({ queryKey: ['trips'] });
+      setDeleteId(null);
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setDeleteError(e.response?.data?.message ?? e.message ?? 'Failed to delete trip. Please try again.');
     } finally {
       setIsDeleting(false);
-      setDeleteId(null);
     }
   };
 
@@ -83,6 +88,12 @@ export default function AdminDashboardPage() {
           ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-200" />
             ))
+          : statsError
+          ? (
+            <div className="col-span-2 lg:col-span-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Failed to load dashboard statistics. Please refresh the page.
+            </div>
+          )
           : statCards.map(({ label, value, icon: Icon, color }) => (
               <div
                 key={label}
@@ -195,15 +206,20 @@ export default function AdminDashboardPage() {
       {/* Delete confirm modal */}
       <Modal
         isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
+        onClose={() => { setDeleteId(null); setDeleteError(''); }}
         title="Deactivate Trip"
         size="sm"
       >
         <p className="mb-6 text-sm text-gray-600">
           This will soft-delete the trip and make it invisible to users.
         </p>
+        {deleteError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        )}
         <div className="flex gap-3">
-          <Button variant="ghost" className="flex-1" onClick={() => setDeleteId(null)}>
+          <Button variant="ghost" className="flex-1" onClick={() => { setDeleteId(null); setDeleteError(''); }}>
             Keep
           </Button>
           <Button
