@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 import type { ITrip } from '@/types';
@@ -30,12 +29,10 @@ export default function TripCardUpcoming({ trip, variant }: TripCardUpcomingProp
     <div className="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-shadow hover:shadow-lg sm:flex-row">
       {/* Left — image */}
       <div className="relative h-48 w-full shrink-0 sm:h-auto sm:w-64">
-        <Image
+        <img
           src={trip.coverImage}
           alt={trip.title}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 100vw, 256px"
+          className="absolute inset-0 h-full w-full object-cover"
         />
         {/* Banner pill */}
         <div className="absolute left-3 top-3">

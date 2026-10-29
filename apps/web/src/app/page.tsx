@@ -251,31 +251,31 @@ export default function HomePage() {
               </p>
               <h2 className="text-3xl font-extrabold text-gray-900">The Travel Journal</h2>
             </div>
-            <a
-              href="#"
+            <Link
+              href="/trips"
               className="whitespace-nowrap text-sm font-semibold text-primary hover:underline"
             >
               Read all stories ↗
-            </a>
+            </Link>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <BlogCard
               image="https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=600"
               tag="TRAVEL TIPS · 5 MIN READ"
               title="Best time to visit Manali & Spiti Valley"
-              href="#"
+              href="/trips"
             />
             <BlogCard
               image="https://images.unsplash.com/photo-1609766418204-94aae0ecbff4?w=600"
               tag="DESTINATION GUIDE · 7 MIN READ"
               title="Kerala in 6 days: the perfect itinerary"
-              href="#"
+              href="/trips"
             />
             <BlogCard
               image="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600"
               tag="SLOW TRAVEL · 4 MIN READ"
               title="Why small-group tours are better in Rajasthan"
-              href="#"
+              href="/trips"
             />
           </div>
         </div>
