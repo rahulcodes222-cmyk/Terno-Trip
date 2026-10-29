@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Admin foundation: create the admin API client, the role-gated admin layout with navy sidebar, and update Navbar to show an Admin Dashboard link for admin users. These are the shared infrastructure pieces that FEAT-002 depends on.",
+  "status": "completed",
+  "steps": [
+    "Create apps/web/src/lib/admin-api.ts. Import apiClient from '@/lib/api-client' and ITrip, IBooking, ApiResponse, PaginatedResponse from '@/types'. Export five async functions: adminCreateTrip(data: Partial<ITrip>): Promise<ITrip> — POST /api/v1/admin/trips, returns res.data.data; adminUpdateTrip(id: string, data: Partial<ITrip>): Promise<ITrip> — PUT /api/v1/admin/trips/:id, returns res.data.data; adminDeleteTrip(id: string): Promise<void> — DELETE /api/v1/admin/trips/:id; adminGetAllBookings(params: { page: number; limit: number }): Promise<PaginatedResponse<IBooking>> — GET /api/v1/bookings/admin with params; adminGetStats(): Promise<{ totalTrips: number; totalBookings: number; totalRevenue: number; activeTrips: number }> — GET /api/v1/admin/stats, returns zeros object on any error (try/catch returns default). No custom headers needed — API gateway injects x-user-role from the session cookie automatically.",
+
+    "Create apps/web/src/app/admin/layout.tsx as a 'use client' component. Import useAuth from '@/contexts/AuthContext', useRouter from 'next/navigation', LoadingSpinner from '@/components/ui/LoadingSpinner', Link from 'next/link', cn from '@/lib/utils', and icons LayoutDashboard, MapPin, Briefcase, LogOut, Menu, X from 'lucide-react'. Role guard: inside a useEffect watching [isLoading, isAuthenticated, user], if !isLoading && (!isAuthenticated || user?.role !== 'admin'), call router.replace('/auth/login?returnUrl=/admin'). While isLoading, return <LoadingSpinner fullPage />. If !isAuthenticated or role !== admin, return null (redirect fires). Sidebar (nav, className='flex h-screen'): left panel 240px wide, bg-[#1B2E6B], text-white, flex-col. Top: logo section (inline TernoTrip logo — img src='/images/logo.jpeg' w-10 h-8 + span with 'Terno' in white and 'Trip' in #FF6B00). Nav section: three Link items (Dashboard → /admin, Trips → /admin/trips, Bookings → /admin/bookings) each with icon + label. Active detection: use usePathname(); active link gets border-l-4 border-[#FF6B00] bg-white/10. Bottom: user name display + logout button (onClick calls logout() then router.push('/')). Mobile: add hamburger toggle button at top, sidebar renders as fixed overlay when sidebarOpen=true. Main content: <main className='flex-1 overflow-y-auto bg-[#F5F7FA]'>{children}</main>.",
+
+    "Update apps/web/src/components/layout/Navbar.tsx to add an Admin Dashboard link in both the desktop dropdown and mobile menu. In the desktop dropdown: after the Profile link and before the <hr>, add: {user?.role === 'admin' && (<Link href='/admin' onClick={() => setDropdownOpen(false)} className='flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#1B2E6B] hover:bg-blue-50'><LayoutDashboard className='h-4 w-4' /> Admin Dashboard</Link>)}. In the mobile menu: after the Profile link and before the Logout button, add the same conditional link with appropriate mobile padding classes. Add LayoutDashboard to the lucide-react import at the top of the file."
+  ],
+  "acceptance_criteria": [
+    "apps/web/src/lib/admin-api.ts exists and exports adminCreateTrip, adminUpdateTrip, adminDeleteTrip, adminGetAllBookings, adminGetStats with correct TypeScript signatures",
+    "apps/web/src/app/admin/layout.tsx renders a navy sidebar with Dashboard, Trips, Bookings nav items and redirects non-admin users to login",
+    "apps/web/src/components/layout/Navbar.tsx shows 'Admin Dashboard' link in user dropdown only when user.role === 'admin'",
+    "Running `cd apps/web && npm run build` completes with zero TypeScript errors"
+  ],
+  "verification": [
+    "cd apps/web && npm run build — must complete with exit code 0 and no TypeScript errors in the output"
+  ],
+  "blocked_reason": null,
+  "findings": "All three steps implemented successfully. Build passes with zero TypeScript errors (exit code 0). admin-api.ts exports all 5 functions with correct signatures. Admin layout has navy sidebar with role guard, active-link highlighting, and mobile hamburger. Navbar shows Admin Dashboard link in both desktop dropdown and mobile menu conditionally on user.role === 'admin'. The /admin route group is not yet included in the build output (no page.tsx) — FEAT-002 will add the admin pages."
+}
