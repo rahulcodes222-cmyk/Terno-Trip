@@ -182,7 +182,7 @@ export default function Navbar() {
                 Profile
               </Link>
               <button
-                onClick={() => { handleLogout(); setMobileOpen(false); }}
+                onClick={async () => { await handleLogout(); setMobileOpen(false); }}
                 className="rounded-lg px-3 py-2.5 text-left text-sm text-red-400 hover:bg-white/10"
               >
                 Logout
