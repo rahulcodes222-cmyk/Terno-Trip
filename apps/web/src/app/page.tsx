@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useTrips } from '@/hooks/useTrips';
+import { useFeaturedTrips, useTrendingTrips } from '@/hooks/useTrips';
 import PageLayout from '@/components/layout/PageLayout';
 import HeroSlider from '@/components/home/HeroSlider';
 import StatsBar from '@/components/home/StatsBar';
@@ -35,20 +35,25 @@ const WHY_ITEMS = [
 ];
 
 export default function HomePage() {
-  const { data: tripsData, isLoading } = useTrips({ limit: 20 });
-  const allTrips = tripsData?.data ?? [];
+  const { data: featuredTrips = [], isLoading: featuredLoading } = useFeaturedTrips();
+  const { data: trendingTrips = [], isLoading: trendingLoading } = useTrendingTrips();
   const now = new Date();
 
-  const upcomingTrips = allTrips
+  const upcomingTrips = featuredTrips
     .filter((t) => t.startDates.some((d) => new Date(d) > now))
     .slice(0, 3);
 
-  const completedTrips = allTrips
-    .filter(
-      (t) =>
-        t.startDates.length > 0 && t.startDates.every((d) => new Date(d) <= now)
-    )
+  // Fallback: if no featured trip has a future date, show all featured (API guarantees relevance)
+  const displayUpcoming = upcomingTrips.length > 0 ? upcomingTrips : featuredTrips.slice(0, 3);
+
+  const completedTrips = trendingTrips
+    .filter((t) => t.startDates.length > 0 && t.startDates.every((d) => new Date(d) <= now))
     .slice(0, 3);
+
+  // Fallback: show all trending if none pass the completed filter
+  const displayCompleted = completedTrips.length > 0 ? completedTrips : trendingTrips.slice(0, 3);
+
+  const isLoading = featuredLoading || trendingLoading;
 
   return (
     <PageLayout>
@@ -153,9 +158,9 @@ export default function HomePage() {
                 <div key={i} className="h-48 animate-pulse rounded-2xl bg-gray-100" />
               ))}
             </div>
-          ) : upcomingTrips.length > 0 ? (
+          ) : displayUpcoming.length > 0 ? (
             <div className="space-y-4">
-              {upcomingTrips.map((trip) => (
+              {displayUpcoming.map((trip) => (
                 <TripCardUpcoming key={trip._id} trip={trip} variant="upcoming" />
               ))}
             </div>
@@ -194,9 +199,9 @@ export default function HomePage() {
                 <div key={i} className="h-48 animate-pulse rounded-2xl bg-gray-100" />
               ))}
             </div>
-          ) : completedTrips.length > 0 ? (
+          ) : displayCompleted.length > 0 ? (
             <div className="space-y-4">
-              {completedTrips.map((trip) => (
+              {displayCompleted.map((trip) => (
                 <TripCardUpcoming key={trip._id} trip={trip} variant="completed" />
               ))}
             </div>
@@ -252,7 +257,7 @@ export default function HomePage() {
               <h2 className="text-3xl font-extrabold text-gray-900">The Travel Journal</h2>
             </div>
             <Link
-              href="/trips"
+              href="#blog"
               className="whitespace-nowrap text-sm font-semibold text-primary hover:underline"
             >
               Read all stories ↗
@@ -263,19 +268,19 @@ export default function HomePage() {
               image="https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=600"
               tag="TRAVEL TIPS · 5 MIN READ"
               title="Best time to visit Manali & Spiti Valley"
-              href="/trips"
+              href="#blog"
             />
             <BlogCard
               image="https://images.unsplash.com/photo-1609766418204-94aae0ecbff4?w=600"
               tag="DESTINATION GUIDE · 7 MIN READ"
               title="Kerala in 6 days: the perfect itinerary"
-              href="/trips"
+              href="#blog"
             />
             <BlogCard
               image="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600"
               tag="SLOW TRAVEL · 4 MIN READ"
               title="Why small-group tours are better in Rajasthan"
-              href="/trips"
+              href="#blog"
             />
           </div>
         </div>
