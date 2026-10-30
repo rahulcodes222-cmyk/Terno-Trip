@@ -14,6 +14,7 @@ import {
   updateTrip,
   deleteTrip,
   updateAvailability,
+  getTripByIdAdmin,
 } from "../controllers/trip.controller.js";
 
 const router = Router();
@@ -31,6 +32,7 @@ router.post("/api/v1/internal/trips/decrement-seats", serviceAuth, decrementSeat
 router.post("/api/v1/internal/trips/increment-seats", serviceAuth, incrementSeats);
 
 // ─── Admin Routes (require x-user-role: admin injected by API Gateway) ─────────
+router.get("/api/v1/admin/trips/:id", adminAuth, getTripByIdAdmin);
 router.post("/api/v1/admin/trips", adminAuth, createTrip);
 router.put("/api/v1/admin/trips/:id", adminAuth, updateTrip);
 router.delete("/api/v1/admin/trips/:id", adminAuth, deleteTrip);

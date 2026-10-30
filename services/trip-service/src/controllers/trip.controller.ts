@@ -4,6 +4,8 @@ import {
   createPaginatedResponse,
   createApiResponse,
 } from "@terno/shared";
+import mongoose from "mongoose";
+import { Trip } from "../models/Trip.js";
 import * as tripService from "../services/trip.service.js";
 
 export async function listTrips(
@@ -162,6 +164,28 @@ export async function incrementSeats(
       return;
     }
     res.status(200).json(createApiResponse(trip, "Seats incremented"));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getTripByIdAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: "Invalid trip ID" });
+      return;
+    }
+    const trip = await Trip.findById(id).lean();
+    if (!trip) {
+      res.status(404).json({ success: false, message: "Trip not found" });
+      return;
+    }
+    res.status(200).json(createApiResponse(trip, "Trip fetched successfully"));
   } catch (err) {
     next(err);
   }
