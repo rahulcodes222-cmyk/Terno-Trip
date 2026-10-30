@@ -3,7 +3,7 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-    "paths": { "@terno/shared": ["../../packages/shared/src/index.ts"], "@terno/shared/*": ["../../packages/shared/src/*"] }
+    "paths": {}
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
