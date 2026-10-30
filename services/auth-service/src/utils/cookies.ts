@@ -16,19 +16,19 @@ export function setAuthCookies(
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: ACCESS_TOKEN_MAX_AGE,
   });
 
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: REFRESH_TOKEN_MAX_AGE,
   });
 }
 
 export function clearAuthCookies(res: Response): void {
-  res.clearCookie("access_token", { httpOnly: true, sameSite: "lax" });
-  res.clearCookie("refresh_token", { httpOnly: true, sameSite: "lax" });
+  res.clearCookie("access_token", { httpOnly: true, sameSite: "strict" });
+  res.clearCookie("refresh_token", { httpOnly: true, sameSite: "strict" });
 }

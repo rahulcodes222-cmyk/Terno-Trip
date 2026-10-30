@@ -8,7 +8,7 @@ export interface IUserDocument extends Document {
   name: string;
   email: string;
   password: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "master";
   isVerified: boolean;
   refreshTokens: string[];
   createdAt: Date;
@@ -46,7 +46,7 @@ const userSchema = new Schema<IUserDocument, IUserModel>(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "master"],
       default: "user",
     },
     isVerified: {

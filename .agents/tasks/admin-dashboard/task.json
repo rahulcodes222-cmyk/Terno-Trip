@@ -1,0 +1,7 @@
+{
+  "task_id": "task-admin-dashboard",
+  "task_description": "Build a full admin dashboard for the TernoTrip Next.js 14 app: admin API client, role-gated layout with navy sidebar, dashboard stats page, trips CRUD (table + new + edit), bookings overview, and Navbar admin link. All behind user.role === 'admin' guard.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

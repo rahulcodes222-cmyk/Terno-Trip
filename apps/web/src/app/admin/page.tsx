@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CheckCircle, Briefcase, DollarSign, Plus, Edit2, Trash2 } from 'lucide-react';
+import { MapPin, CheckCircle, Briefcase, DollarSign, Plus, Edit2, Trash2, Bus } from 'lucide-react';
 import { adminGetStats, adminDeleteTrip } from '@/lib/admin-api';
 import { useTrips } from '@/hooks/useTrips';
 import Modal from '@/components/ui/Modal';
@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link
           href="/admin/trips/new"
           className="flex items-center gap-3 rounded-xl bg-[#FF6B00] p-5 text-white shadow-sm hover:bg-[#E65100] transition-colors"
@@ -189,6 +189,16 @@ export default function AdminDashboardPage() {
           <div>
             <p className="font-semibold">Add New Trip</p>
             <p className="text-xs text-orange-100">Create a new trip listing</p>
+          </div>
+        </Link>
+        <Link
+          href="/admin/master"
+          className="flex items-center gap-3 rounded-xl bg-green-600 p-5 text-white shadow-sm hover:bg-green-700 transition-colors"
+        >
+          <Bus className="h-6 w-6 shrink-0" />
+          <div>
+            <p className="font-semibold">Master Dashboard</p>
+            <p className="text-xs text-green-100">Update live trip status</p>
           </div>
         </Link>
         <Link

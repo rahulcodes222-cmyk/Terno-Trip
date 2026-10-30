@@ -1,0 +1,7 @@
+{
+  "task_id": "task-terno-trip-planner",
+  "task_description": "Build the complete Terno Trip Planner platform: Next.js 14 App Router frontend + 7 Express microservices (api-gateway, auth, user, trip, booking, payment, notification) + shared packages, all wired together with direct HTTP cross-service calls and MongoDB. Full user journey: browse trips, register/login, book, pay (mock), view booking history, receive notifications.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

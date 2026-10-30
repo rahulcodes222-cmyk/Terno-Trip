@@ -10,27 +10,33 @@ interface BlogCardProps {
 
 export default function BlogCard({ image, tag, title, href }: BlogCardProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white transition-shadow hover:shadow-md">
-      {/* Image */}
-      <div className="relative h-48 w-full overflow-hidden">
+    <Link
+      href={href}
+      className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-card hover:shadow-card-hover transition-shadow"
+    >
+      {/* Image — 220px height */}
+      <div className="relative overflow-hidden" style={{ height: '220px' }}>
         <img
           src={image}
           alt={title}
-          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
         />
+        {/* Tag pill on image */}
+        <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+          {tag}
+        </span>
       </div>
 
       {/* Content */}
-      <div className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary">{tag}</p>
-        <h3 className="mt-1 line-clamp-2 font-semibold text-gray-900">{title}</h3>
-        <Link
-          href={href}
-          className="mt-3 block text-sm font-medium text-primary hover:underline"
-        >
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="mb-3 text-sm font-bold leading-snug text-gray-900 line-clamp-2 group-hover:text-[#FF6B00] transition-colors flex-1">
+          {title}
+        </h3>
+        <span className="text-xs font-semibold" style={{ color: '#FF6B00' }}>
           Read story ↗
-        </Link>
+        </span>
       </div>
-    </div>
+    </Link>
   );
 }

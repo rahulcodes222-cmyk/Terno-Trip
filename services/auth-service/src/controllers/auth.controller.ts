@@ -1,7 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { registerSchema, loginSchema } from "@terno/shared";
 import { User } from "../models/User.js";
+import { AuditEvent } from "../models/AuditEvent.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -9,6 +11,18 @@ import {
 } from "../utils/jwt.js";
 import { setAuthCookies, clearAuthCookies } from "../utils/cookies.js";
 import { env } from "../config/env.js";
+
+// ─── Change Password Schema ───────────────────────────────────────────────────
+
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  })
+  .refine((d) => d.currentPassword !== d.newPassword, {
+    message: "New password must differ from current password",
+    path: ["newPassword"],
+  });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +89,16 @@ export async function register(
 
     setAuthCookies(res, accessToken, refreshToken);
 
+    // Audit log (fire-and-forget)
+    void AuditEvent.log({
+      userId: user._id.toString(),
+      email: user.email,
+      action: "register",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      success: true,
+    });
+
     // Fire-and-forget: create user profile in user-service
     notifyUserService({
       userId: user._id.toString(),
@@ -106,12 +130,14 @@ export async function login(
     const user = await User.findOne({ email: body.email }).select("+password");
 
     if (!user) {
+      void AuditEvent.log({ email: body.email, action: "login_failed", ip: req.ip, userAgent: req.headers["user-agent"], success: false });
       res.status(401).json({ success: false, message: "Invalid credentials" });
       return;
     }
 
     const isMatch = await user.comparePassword(body.password);
     if (!isMatch) {
+      void AuditEvent.log({ userId: user._id.toString(), email: user.email, action: "login_failed", ip: req.ip, userAgent: req.headers["user-agent"], success: false });
       res.status(401).json({ success: false, message: "Invalid credentials" });
       return;
     }
@@ -128,6 +154,9 @@ export async function login(
     await user.save({ validateModifiedOnly: true });
 
     setAuthCookies(res, accessToken, refreshToken);
+
+    // Audit log
+    void AuditEvent.log({ userId: user._id.toString(), email: user.email, action: "login", ip: req.ip, userAgent: req.headers["user-agent"], success: true });
 
     res.status(200).json({
       success: true,
@@ -164,6 +193,7 @@ export async function logout(
     }
 
     clearAuthCookies(res);
+    void AuditEvent.log({ userId: req.user?.id, action: "logout", ip: req.ip, userAgent: req.headers["user-agent"], success: true });
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (error) {
     next(error);
@@ -212,6 +242,7 @@ export async function refresh(
       // Possible token reuse attack — clear all tokens
       user.refreshTokens = [];
       await user.save({ validateModifiedOnly: true });
+      void AuditEvent.log({ userId: user._id.toString(), action: "token_reuse_detected", ip: req.ip, userAgent: req.headers["user-agent"], success: false });
       res
         .status(401)
         .json({ success: false, message: "Invalid refresh token" });
@@ -257,6 +288,178 @@ export async function me(
       success: true,
       message: "User retrieved",
       data: { user: sanitizeUser(user) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ─── Change Password ──────────────────────────────────────────────────────────
+
+export async function changePassword(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Not authenticated" });
+      return;
+    }
+
+    const body = changePasswordSchema.parse(req.body);
+
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    const isMatch = await user.comparePassword(body.currentPassword);
+    if (!isMatch) {
+      res
+        .status(400)
+        .json({ success: false, message: "Current password is incorrect" });
+      return;
+    }
+
+    // Hash new password (pre-save hook will also hash, but we set directly to avoid double-hash)
+    user.password = await bcrypt.hash(body.newPassword, 12);
+    // Invalidate all existing sessions (force re-login on other devices)
+    user.refreshTokens = [];
+    // Mark password as modified so pre-save hook skips hashing (already hashed above)
+    user.markModified("password");
+    await user.save({ validateModifiedOnly: true });
+
+    // Clear cookies on this device too — user must log in again with new password
+    clearAuthCookies(res);
+
+    void AuditEvent.log({
+      userId: user._id.toString(),
+      email: user.email,
+      action: "password_change",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      success: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Password changed successfully. Please log in again with your new password.",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ─── Dev-only: Create Admin Account ──────────────────────────────────────────
+// Only available in NODE_ENV=development. Creates/updates a hardcoded admin
+// account for local testing. NEVER expose in production.
+
+export async function createDevAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (env.NODE_ENV !== "development") {
+      res.status(403).json({ success: false, message: "Not available in production" });
+      return;
+    }
+
+    const adminEmail = "admin@terno.dev";
+    const adminPassword = "Admin@123456";
+    const adminName = "Terno Admin";
+
+    // Check if already exists
+    let admin = await User.findOne({ email: adminEmail }).select("+password");
+
+    if (admin) {
+      // Already exists — just ensure role is admin
+      admin.role = "admin";
+      await admin.save({ validateModifiedOnly: true });
+    } else {
+      // Create fresh admin user
+      admin = await User.create({
+        name: adminName,
+        email: adminEmail,
+        password: adminPassword,
+        role: "admin",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Dev admin account ready",
+      data: {
+        email: adminEmail,
+        password: adminPassword,
+        role: "admin",
+        note: "DEV ONLY — use these credentials to log in as admin at /auth/login",
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ─── Dev-only: Create Master Account ─────────────────────────────────────────
+export async function createDevMaster(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (env.NODE_ENV !== "development") {
+      res.status(403).json({ success: false, message: "Not available in production" });
+      return;
+    }
+
+    const masterEmail = "master@terno.dev";
+    const masterPassword = "Master@123456";
+    const masterName = "Terno Master";
+
+    let master = await User.findOne({ email: masterEmail }).select("+password");
+    if (master) {
+      master.role = "master";
+      await master.save({ validateModifiedOnly: true });
+    } else {
+      master = await User.create({
+        name: masterName,
+        email: masterEmail,
+        password: masterPassword,
+        role: "master",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Dev master account ready",
+      data: {
+        email: masterEmail,
+        password: masterPassword,
+        role: "master",
+        note: "DEV ONLY — use these credentials to log in as master at /auth/login",
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ─── Get all masters (admin only — used for trip form dropdown) ───────────────
+export async function getMasters(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const masters = await User.find({ role: "master" }).select("_id name email");
+    res.status(200).json({
+      success: true,
+      message: "Masters fetched",
+      data: { masters },
     });
   } catch (error) {
     next(error);

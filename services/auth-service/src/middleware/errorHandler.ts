@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction, ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
-import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+
+const { JsonWebTokenError, TokenExpiredError } = jwt;
 
 interface MongoError extends Error {
   code?: number;

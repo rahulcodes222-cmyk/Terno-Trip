@@ -2,12 +2,16 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import helmet from "helmet";
 
 import { env } from "./config/env.js";
 import authRouter from "./routes/auth.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
+
+// ─── Security Headers ─────────────────────────────────────────────────────────
+app.use(helmet());
 
 // ─── Global Middleware ────────────────────────────────────────────────────────
 
@@ -19,7 +23,8 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(morgan("dev"));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────

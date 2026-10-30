@@ -15,6 +15,12 @@ router.get("/profile", extractUser, getProfile);
 // PUT  /api/v1/users/profile
 router.put("/profile", extractUser, updateProfile);
 
+// GET  /api/v1/users/me  (alias — spec requirement)
+router.get("/me", extractUser, getProfile);
+
+// PATCH /api/v1/users/me  (alias — spec requirement)
+router.patch("/me", extractUser, updateProfile);
+
 // GET  /api/v1/users/preferences
 router.get("/preferences", extractUser, getPreferences);
 

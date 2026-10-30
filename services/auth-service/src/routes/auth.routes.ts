@@ -5,6 +5,10 @@ import {
   logout,
   refresh,
   me,
+  changePassword,
+  createDevAdmin,
+  createDevMaster,
+  getMasters,
 } from "../controllers/auth.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 
@@ -26,3 +30,15 @@ router.post("/refresh", refresh);
 router.get("/me", authenticate, me);
 
 export default router;
+
+// PATCH /api/v1/auth/change-password (requires valid access token)
+router.patch("/change-password", authenticate, changePassword);
+
+// POST /api/v1/auth/dev/create-admin  ← DEV ONLY, not available in production
+router.post("/dev/create-admin", createDevAdmin);
+
+// POST /api/v1/auth/dev/create-master  ← DEV ONLY
+router.post("/dev/create-master", createDevMaster);
+
+// GET /api/v1/auth/masters  ← admin only, returns list of masters for dropdown
+router.get("/masters", authenticate, getMasters);

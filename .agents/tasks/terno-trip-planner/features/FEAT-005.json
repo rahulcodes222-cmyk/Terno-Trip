@@ -1,0 +1,172 @@
+{
+  "id": "FEAT-005",
+  "type": "feat",
+  "description": "Next.js 14 App Router frontend at apps/web/ (port 3000). Complete Terno Trip Planner UI. TanStack Query v5 for server state, React Hook Form + Zod for forms, Tailwind CSS with emerald primary theme. All API calls go through API Gateway at NEXT_PUBLIC_API_URL (default http://localhost:4000). Independent of FEAT-004 in implementation but requires it at runtime.",
+  "status": "pending",
+  "steps": [
+    "--- SETUP ---",
+
+    "1. Create apps/web/package.json with exact content: { 'name': '@terno/web', 'version': '1.0.0', 'private': true, 'scripts': { 'dev': 'next dev -p 3000', 'build': 'next build', 'start': 'next start -p 3000', 'lint': 'next lint' }, 'dependencies': { 'next': '14.2.3', 'react': '^18.3.0', 'react-dom': '^18.3.0', '@tanstack/react-query': '^5.40.0', '@tanstack/react-query-devtools': '^5.40.0', 'axios': '^1.7.2', 'react-hook-form': '^7.52.0', '@hookform/resolvers': '^3.6.0', 'zod': '^3.23.8', 'clsx': '^2.1.1', 'tailwind-merge': '^2.3.0', 'lucide-react': '^0.395.0', 'date-fns': '^3.6.0' }, 'devDependencies': { 'typescript': '^5.4.5', '@types/react': '^18.3.3', '@types/react-dom': '^18.3.0', '@types/node': '^20.14.0', 'tailwindcss': '^3.4.4', 'postcss': '^8.4.38', 'autoprefixer': '^10.4.19', 'eslint': '^8.57.0', 'eslint-config-next': '14.2.3' } }",
+
+    "2. Create apps/web/tsconfig.json with exact content: { 'compilerOptions': { 'target': 'ES2017', 'lib': ['dom', 'dom.iterable', 'esnext'], 'allowJs': true, 'skipLibCheck': true, 'strict': true, 'noEmit': true, 'esModuleInterop': true, 'module': 'esnext', 'moduleResolution': 'bundler', 'resolveJsonModule': true, 'isolatedModules': true, 'jsx': 'preserve', 'incremental': true, 'plugins': [{ 'name': 'next' }], 'paths': { '@/*': ['./src/*'] } }, 'include': ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'], 'exclude': ['node_modules'] }",
+
+    "3. Create apps/web/next.config.js — MUST be CommonJS (module.exports, NOT export default — Next.js requires this): /** @type {import('next').NextConfig} */ const nextConfig = { images: { remotePatterns: [{ protocol: 'https', hostname: 'picsum.photos' }] }, env: { NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000' } }; module.exports = nextConfig;",
+
+    "4. Create apps/web/tailwind.config.ts with exact content from spec: content covers './src/**/*.{js,ts,jsx,tsx,mdx}'. Theme extends colors.primary with DEFAULT '#10B981' and shades 50-900. fontFamily.sans: ['Inter', 'sans-serif']. plugins: [].",
+
+    "5. Create apps/web/postcss.config.js: module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } }",
+
+    "6. Create apps/web/.env.local.example: NEXT_PUBLIC_API_URL=http://localhost:4000",
+
+    "--- TYPES AND UTILITIES ---",
+
+    "7. Create apps/web/src/types/index.ts — define plain TypeScript interfaces (no Zod, no @terno/shared import — keep the web bundle clean): IUser { _id, firstName, lastName, email, phone?, nationality?, role, createdAt }, ITripItineraryDay { day, title, description, accommodation? }, ITrip { _id, title, slug, destination, country, coverImage, images, description, category, duration, maxGroupSize, pricePerPerson, discountPrice?, itinerary: ITripItineraryDay[], inclusions, exclusions, accommodationType, difficulty, startDates, availableSeats, ratingsAverage, ratingsQuantity, cancellationPolicy, isActive, createdAt }, ITraveller { firstName, lastName, age, passportNumber? }, ITripSnapshot { title, destination, coverImage, pricePerPerson, duration }, IBooking { _id, bookingRef, userId, tripId, tripSnapshot: ITripSnapshot, departureDate, travellers: ITraveller[], totalAmount, status: 'Pending'|'Confirmed'|'Cancelled'|'Refunded', paymentStatus: 'Pending'|'Paid'|'Failed'|'Refunded', contactEmail, contactPhone, specialRequests?, paymentId?, cancellationReason?, createdAt }, INotification { _id, userId, title, message, type: 'booking'|'payment'|'system', read, metadata?, createdAt }, ApiResponse<T> { success: boolean, message?: string, data: T }, PaginatedResponse<T> { success: boolean, data: T[], pagination: { page, limit, total, pages } }",
+
+    "8. Create apps/web/src/lib/utils.ts — cn(inputs: ClassValue[]): string using clsx + twMerge. formatCurrency(amount: number): string using new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount). formatDate(date: string | Date, format?: string): string using date-fns format (default 'dd MMM yyyy'). truncateText(text: string, maxLength: number): string. getStatusColor(status: string): string returns Tailwind color classes (Confirmed→green, Pending→yellow, Cancelled→red, Refunded→gray).",
+
+    "9. Create apps/web/src/lib/session-storage.ts — interface BookingIntent { tripId: string; tripSlug: string; departureDate: string; travellersCount: number }. saveBookingIntent(intent: BookingIntent): void — guard typeof window !== 'undefined', sessionStorage.setItem('bookingIntent', JSON.stringify(intent)). getBookingIntent(): BookingIntent | null. clearBookingIntent(): void.",
+
+    "10. Create apps/web/src/lib/api-client.ts — import axios. Create instance: baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', withCredentials: true, headers: { 'Content-Type': 'application/json' }. Add response interceptor: on error response, if status === 401 AND original URL does NOT include '/auth/refresh' AND typeof window !== 'undefined': attempt POST /api/v1/auth/refresh (withCredentials: true), on success retry original request, on failure redirect to /auth/login. Export as default apiClient.",
+
+    "11. Create apps/web/src/lib/query-client.ts — import { QueryClient } from '@tanstack/react-query'. const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false }, mutations: { retry: 0 } } }). export default queryClient.",
+
+    "--- AUTH ---",
+
+    "12. Create apps/web/src/contexts/AuthContext.tsx — 'use client'. Define AuthContextValue interface: user: IUser|null, isLoading, isAuthenticated, login(email, password): Promise<void>, register(firstName, lastName, email, password): Promise<void>, logout(): Promise<void>, refetch(): void. Create context. AuthProvider uses useQuery({ queryKey: ['auth', 'me'], queryFn: () => apiClient.get('/api/v1/auth/me').then(r => r.data.data), retry: false, staleTime: 5*60*1000 }) — returns null on 401 (catch 401 and return null). login: POST /api/v1/auth/login, then queryClient.invalidateQueries(['auth','me']). register: POST /api/v1/auth/register, then invalidate. logout: POST /api/v1/auth/logout, then invalidate + redirect '/'.",
+
+    "13. Create apps/web/src/hooks/useTrips.ts — TanStack Query v5 object syntax throughout. useTrips(filters): useQuery key ['trips', filters], queryFn GET /api/v1/trips with params. useTrip(slug: string | undefined): useQuery key ['trip', slug], enabled: !!slug, GET /api/v1/trips/:slug. useFeaturedTrips(): key ['trips', 'featured'], GET /api/v1/trips/featured. useTrendingTrips(): key ['trips', 'trending'], GET /api/v1/trips/trending.",
+
+    "14. Create apps/web/src/hooks/useBookings.ts — useMyBookings(page?, status?): key ['bookings', 'my', page, status], GET /api/v1/bookings/my?page=N&status=X. useBooking(ref): key ['booking', ref], enabled: !!ref. useCreateBooking(): useMutation({ mutationFn: POST /api/v1/bookings }). useCancelBooking(): useMutation({ mutationFn: (id) => DELETE /api/v1/bookings/:id, onSuccess: invalidate ['bookings','my'] }).",
+
+    "15. Create apps/web/src/hooks/usePayment.ts — useCreateOrder(): useMutation({ mutationFn: (body) => POST /api/v1/payments/orders → returns { payment._id, orderId, amount } }). useProcessPayment(): useMutation({ mutationFn: ({ paymentId, scenario }) => POST /api/v1/payments/orders/:paymentId/process { scenario } }).",
+
+    "16. Create apps/web/src/hooks/useNotifications.ts — useNotifications(page?): key ['notifications', page], GET /api/v1/notifications?page=N. useUnreadCount(): key ['notifications','unread-count'], GET /api/v1/notifications/unread-count, refetchInterval: 30_000. useMarkRead(): useMutation({ mutationFn: (id) => PATCH /api/v1/notifications/:id/read }). useMarkAllRead(): useMutation({ mutationFn: () => PATCH /api/v1/notifications/read-all }).",
+
+    "--- APP SHELL ---",
+
+    "17. Create apps/web/src/app/globals.css: @tailwind base; @tailwind components; @tailwind utilities; @layer base { body { @apply font-sans text-gray-900 bg-white; } * { scroll-behavior: smooth; } }",
+
+    "18. Create apps/web/src/app/providers.tsx — 'use client'. Import queryClient from lib/query-client. Import { QueryClientProvider } from '@tanstack/react-query'. Import { ReactQueryDevtools } from '@tanstack/react-query-devtools'. Import { AuthProvider } from contexts/AuthContext. Export default function Providers({ children }) wrapping in QueryClientProvider > AuthProvider. Add ReactQueryDevtools only in development.",
+
+    "19. Create apps/web/src/app/layout.tsx — import { Inter } from 'next/font/google'. const inter = Inter({ subsets: ['latin'] }). export const metadata: Metadata = { title: 'Terno — Explore India', description: 'Discover curated trips across India with Terno.' }. Root layout: <html lang='en'><body className={inter.className}><Providers>{children}</Providers></body></html>. Import globals.css.",
+
+    "--- LAYOUT COMPONENTS ---",
+
+    "20. Create apps/web/src/components/layout/Navbar.tsx — 'use client'. Logo: emerald circle with 'T' letter + 'Terno' text. Desktop nav links: Home (/), Explore (/trips), About (#). Mobile: hamburger button toggling a slide-in menu (useState for open/close). Auth state from useAuth(): if isLoading → skeleton. If !isAuthenticated → 'Log In' link + 'Sign Up' Button (primary). If isAuthenticated → notification bell (Link to /notifications, shows useUnreadCount badge if > 0) + avatar dropdown (useState for open) with: 'My Bookings' (/bookings), 'Profile' (/profile), separator, 'Logout' button. Sticky top-0 z-50, white background, shadow-sm. Fully responsive with sm/md/lg breakpoints.",
+
+    "21. Create apps/web/src/components/layout/Footer.tsx — Terno logo + tagline. Links: Explore (/trips), About (#), Terms (#), Privacy (#). Copyright '© 2024 Terno. All rights reserved.' Simple, clean, dark background or light depending on design. Keep concise.",
+
+    "--- UI COMPONENTS ---",
+
+    "22. Create apps/web/src/components/ui/Button.tsx — variants: primary (bg-primary text-white hover:bg-primary-600), secondary (border border-primary text-primary hover:bg-primary-50), ghost (text-gray-600 hover:bg-gray-100), danger (bg-red-600 text-white). Sizes: sm (px-3 py-1.5 text-sm), md (px-4 py-2), lg (px-6 py-3 text-lg). Loading prop: shows inline spinner + disables. Disabled: opacity-50 cursor-not-allowed. Accepts className override. Support 'as' prop for polymorphism (default 'button', can be 'a' for Link).",
+
+    "23. Create apps/web/src/components/ui/Input.tsx — forwardRef. Props: label?, error?, id, ...rest (InputHTMLAttributes). Renders label (if provided) + input with base style (border, focus ring in primary color, error border in red) + error message below (text-red-500 text-sm). Export as Input.",
+
+    "24. Create apps/web/src/components/ui/Badge.tsx — maps status string to colors: Confirmed/Success→bg-green-100 text-green-800, Pending→bg-yellow-100 text-yellow-800, Cancelled/Failed→bg-red-100 text-red-800, Refunded→bg-gray-100 text-gray-700. Small pill shape (rounded-full, px-2.5 py-0.5, text-xs font-medium).",
+
+    "25. Create apps/web/src/components/ui/LoadingSpinner.tsx — SVG spinning circle. Props: size? ('sm'|'md'|'lg'), fullPage? (boolean — if true centers in full viewport height). Export as LoadingSpinner.",
+
+    "26. Create apps/web/src/components/ui/ErrorMessage.tsx — red bordered card with error icon, title 'Something went wrong', message prop, optional retry button (onRetry prop).",
+
+    "27. Create apps/web/src/components/ui/EmptyState.tsx — centered layout: optional icon (Lucide icon component prop or default), title, message, optional CTA button (text + onClick/href).",
+
+    "28. Create apps/web/src/components/ui/Pagination.tsx — accepts page, totalPages, onPageChange. Renders Prev button (disabled if page=1), page number buttons (show up to 5, with ellipsis), Next button. Current page highlighted with primary color.",
+
+    "29. Create apps/web/src/components/ui/Modal.tsx — 'use client'. Uses createPortal to render into document.body. Backdrop: fixed inset-0 bg-black/50 z-50. Dialog: centered white rounded-xl shadow-xl with close button (X). ESC key closes. Click outside (on backdrop) closes. Props: isOpen, onClose, title?, children, size? ('sm'|'md'|'lg').",
+
+    "30. Create apps/web/src/components/ui/PriceDisplay.tsx — uses formatCurrency from utils. Props: amount, originalAmount? (if provided and > amount, shows strikethrough originalAmount + discount badge), className?.",
+
+    "--- TRIP COMPONENTS ---",
+
+    "31. Create apps/web/src/components/trips/TripCard.tsx — 'use client'. Props: trip: ITrip. Card with: next/image coverImage (aspect-ratio 16/9), category Badge, title (font-semibold, truncate), destination with 📍 icon, duration (clock icon), price (PriceDisplay), rating (⭐ ratingsAverage). 'View Trip' → Link to /trips/:slug. Hover lift effect: transition-transform hover:-translate-y-1. Rounded-xl shadow-sm border.",
+
+    "32. Create apps/web/src/components/trips/TripGrid.tsx — Props: trips?: ITrip[], isLoading, error?. Loading: renders 6 skeleton cards (animate-pulse gray rectangles). Error: ErrorMessage component. Empty: EmptyState 'No trips found'. Grid: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6.",
+
+    "33. Create apps/web/src/components/trips/TripFilters.tsx — 'use client'. Props: filters, onChange(filters). Fields: search text input, category buttons (Adventure|Beach|Cultural|Wildlife|City|Mountain|Budget — toggle active), minPrice/maxPrice number inputs, duration select (any|1-3 days|4-7 days|8+ days), sortBy select (price-asc|price-desc|rating-desc|duration-asc). 'Clear All' button resets all fields. On mobile: collapsible (toggle button to show/hide). Calls onChange on any field change.",
+
+    "34. Create apps/web/src/components/trips/TripImageGallery.tsx — 'use client'. Props: images: string[], coverImage: string, title: string. Main image (large, aspect-video, next/image object-cover). Thumbnail strip below: horizontal scroll, clicking thumbnail changes main image. Active thumbnail has primary color border.",
+
+    "35. Create apps/web/src/components/trips/ItineraryAccordion.tsx — 'use client'. Props: itinerary: ITripItineraryDay[]. Each day: click header to expand/collapse (useState per item or a single openDay state). Header: 'Day N: title'. Content: description + accommodation (if set). Smooth height transition with CSS transition.",
+
+    "36. Create apps/web/src/components/trips/InclusionsExclusions.tsx — Props: inclusions: string[], exclusions: string[]. Two columns (grid-cols-1 sm:grid-cols-2). Inclusions: green CheckCircle icon (Lucide) per item. Exclusions: red XCircle icon per item.",
+
+    "--- AUTH COMPONENTS ---",
+
+    "37. Create apps/web/src/components/auth/ProtectedRoute.tsx — 'use client'. Props: children: ReactNode. Uses useAuth(). If isLoading → <LoadingSpinner fullPage />. If !isAuthenticated → call useRouter().replace('/auth/login?returnUrl=' + encodeURIComponent(window.location.pathname)) + return null. Otherwise render children.",
+
+    "--- CHECKOUT COMPONENTS ---",
+
+    "38. Create apps/web/src/components/checkout/PaymentModal.tsx — 'use client'. Props: isOpen, onClose, booking: IBooking, onSuccess: (bookingRef: string) => void. Modal with: order summary (trip name, date, travellers, amount). Yellow banner: '⚠️ MOCK PAYMENT — No real money will be charged. For testing only.' Dev scenario selector (only shown when NODE_ENV !== 'production'): radio buttons Success / Failure / Pending. 'Pay ₹{amount}' Button (primary, large, full width). On submit: useCreateOrder mutation (POST /api/v1/payments/orders body { bookingId: booking._id, amount: booking.totalAmount }), then useProcessPayment mutation ({ paymentId: order.payment._id, scenario }). Success state: green checkmark, 'Booking Confirmed!', booking ref display, Link to /bookings/:ref, 'View My Bookings' Button. Failure state: red X, error message, 'Retry' button that resets state.",
+
+    "--- HOME PAGE ---",
+
+    "39. Create apps/web/src/app/page.tsx — 'use client' (needs hooks). Sections: 1) Hero: relative div with next/image fill covering full width (height 600px), gradient overlay, headline 'Discover India with Terno' (text-4xl md:text-6xl font-bold text-white), subtext, search bar (destination input + date + travellers stepper + Search button → navigates to /trips?q=X). 2) Featured Trips: section title + TripGrid (useFeaturedTrips data, isLoading). 3) Categories: 7 cards (Adventure=Mountain icon, Beach=Waves, Cultural=Landmark, Wildlife=TreePine, City=Building2, Budget=Wallet, Mountain=Mountain) in horizontal scroll or grid, each card navigates to /trips?category=X. 4) Trending Trips: TripGrid (useTrendingTrips). 5) Why Terno: 3 cards (Curated Trips/CheckCircle, Best Price/Tag, 24/7 Support/HeadphonesIcon). 6) CTA banner: dark emerald bg, 'Ready to Explore India?', 'Browse All Trips' Button. 7) Footer. Export metadata.",
+
+    "--- TRIPS PAGES ---",
+
+    "40. Create apps/web/src/app/trips/page.tsx — 'use client'. Read filters from URL via useSearchParams(). State: filters object, page. TripFilters.onChange → update URL params via useRouter().push(). Left sidebar on md+: TripFilters. Main area: 'Showing X of Y trips' count, TripGrid (useTrips(filters) data), Pagination. On mobile: TripFilters hidden behind a 'Filters' button + drawer/sheet overlay.",
+
+    "41. Create apps/web/src/app/trips/[slug]/page.tsx — 'use client'. useParams() to get slug. useTrip(slug). If isLoading → LoadingSpinner. If error → ErrorMessage. Sections: TripImageGallery, trip header (title, destination, category badge, difficulty badge, rating), stats bar (duration, maxGroupSize, accommodationType, cancellationPolicy excerpt). Booking sidebar (lg:sticky top-24): PriceDisplay, departure date selector (select from trip.startDates formatted), travellers stepper (min 1, max min(12, availableSeats)), price calculation (pricePerPerson × travellers), 'Book Now' Button. Book Now handler: if !isAuthenticated → saveBookingIntent({ tripId: trip._id, tripSlug: slug, departureDate, travellersCount }) then router.push('/auth/login?returnUrl=/trips/' + slug) else router.push('/checkout?tripSlug=' + slug + '&date=' + date + '&travellers=' + n). Description section. ItineraryAccordion. InclusionsExclusions. Cancellation Policy. generateMetadata export for SEO.",
+
+    "--- AUTH PAGES ---",
+
+    "42. Create apps/web/src/app/auth/login/page.tsx — non-protected. Centered card (max-w-md mx-auto). Terno logo. Form fields: email (type email), password (type password). Zod loginSchema: { email: z.string().email(), password: z.string().min(6) }. useForm with zodResolver. Submit: const { login } = useAuth(); try { await login(email, password); } catch { setError }. On success: check getBookingIntent() → if present clear it then redirect to returnUrl or original trip page; else redirect to returnUrl || '/'. Link to /auth/register.",
+
+    "43. Create apps/web/src/app/auth/register/page.tsx — non-protected. Fields: firstName, lastName, email, password, confirmPassword. Zod registerSchema with .refine(data => data.password === data.confirmPassword). Submit: await register(firstName+' '+lastName trick — or pass firstName, lastName separately and adapt). On success: check sessionStorage booking intent, redirect accordingly.",
+
+    "--- CHECKOUT PAGE ---",
+
+    "44. Create apps/web/src/app/checkout/page.tsx — wrapped in ProtectedRoute. Read searchParams: tripSlug, date, travellers (parse to number). useTrip(tripSlug). Display trip summary card. Form: useFieldArray for travellers (firstName, lastName, age per traveller). Contact section: contactEmail, contactPhone, specialRequests (all in one useForm). Price breakdown: server price (trip.discountPrice || trip.pricePerPerson) × travellers, +5% GST estimate (display only, actual total comes from server), disclaimer 'Final price confirmed at booking'. 'Proceed to Payment' Button: onSubmit → useCreateBooking mutation with all form data, then setBookingForPayment(result.data) + setPaymentModalOpen(true). Render PaymentModal if open. PaymentModal.onSuccess(ref) → router.push('/bookings/' + ref).",
+
+    "--- BOOKINGS PAGES ---",
+
+    "45. Create apps/web/src/app/bookings/page.tsx — wrapped in ProtectedRoute. Status tabs: All / Upcoming (Pending+Confirmed) / Completed / Cancelled. useMyBookings(page, selectedStatus). Each booking card: trip image (tripSnapshot.coverImage, 80×80), trip title, destination, departure date, travellers.length, totalAmount (PriceDisplay), status Badge, paymentStatus Badge. 'View Details' → /bookings/:ref. 'Cancel' Button (only for Pending/Confirmed) → opens confirm Modal. useCancelBooking mutation on confirm. EmptyState if no bookings. Pagination.",
+
+    "46. Create apps/web/src/app/bookings/[ref]/page.tsx — wrapped in ProtectedRoute. useBooking(ref). Full details: trip snapshot (name, image, destination, duration), departure date, travellers list (table: name, age), contact info, total amount, status Badge, paymentStatus Badge, bookingRef prominently. 'Cancel Booking' button (if Pending/Confirmed). 'Back to My Bookings' link.",
+
+    "--- PROFILE PAGE ---",
+
+    "47. Create apps/web/src/app/profile/page.tsx — wrapped in ProtectedRoute. Pre-populate form from useAuth().user. Fields: firstName, lastName, email (disabled), phone, nationality. Submit: PUT /api/v1/users/profile with form data. Show success/error inline toast (local state: { type: 'success'|'error', message } shown for 3s then cleared). Avatar: next/image with picsum placeholder seeded by user._id.",
+
+    "--- NOTIFICATIONS PAGE ---",
+
+    "48. Create apps/web/src/app/notifications/page.tsx — wrapped in ProtectedRoute. 'Mark all as read' Button at top. useNotifications(page). List: each item in div with left border (emerald-400 if !read, transparent if read), slightly darker bg if unread. Icon by type: booking=Package icon (Lucide), payment=CreditCard, system=Bell. Title (font-semibold), message, date (formatDate). Click → useMarkRead mutation. Pagination. EmptyState if empty.",
+
+    "--- ERROR / LOADING STATES ---",
+
+    "49. Create apps/web/src/app/not-found.tsx — Terno logo, '404 — Page Not Found', message, Link to '/' as Button.",
+
+    "50. Create apps/web/src/app/error.tsx — 'use client'. Props: { error: Error & { digest?: string }; reset: () => void }. Display ErrorMessage component with retry button calling reset(). Log error to console.error.",
+
+    "51. Create apps/web/src/app/loading.tsx — <LoadingSpinner fullPage />.",
+
+    "--- ROOT UPDATES ---",
+
+    "52. Verify root package.json dev script covers api-gateway and apps/web (already confirmed from code read: it does, with concurrently). If any script is missing or doesn't match the spec script in the task prompt, update it. Confirm 'concurrently' is listed in root devDependencies (already is — confirmed).",
+
+    "53. Update README.md: add ports table, step-by-step setup (npm install, copy .env files, fill MONGODB_URI, npm run dev), mock payment scenarios table (Success/Failure/Pending and what each does), npm run seed instruction."
+  ],
+  "acceptance_criteria": [
+    "cd apps/web && npm install && npm run build exits 0 with no TypeScript errors",
+    "npm run dev starts Next.js on port 3000",
+    "http://localhost:3000 loads home page with hero image, featured trips grid, and category cards",
+    "http://localhost:3000/trips shows trip listing with filters sidebar and pagination",
+    "http://localhost:3000/trips/:slug shows full trip detail with booking sidebar",
+    "Clicking 'Book Now' unauthenticated saves intent to sessionStorage and redirects to /auth/login?returnUrl=...",
+    "After login, returnUrl redirect returns user to trip page with intent preserved",
+    "Checkout page creates booking + opens PaymentModal",
+    "Payment success screen shows booking reference and link to /bookings/:ref",
+    "http://localhost:3000/bookings shows booking history with status tabs",
+    "Notification bell in Navbar shows unread count badge",
+    "All pages render correctly on mobile (375px) and desktop (1440px)"
+  ],
+  "verification": [
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip/apps/web && npm install && npm run build",
+    "npm run dev — starts on port 3000",
+    "Open http://localhost:3000 — home page renders without console errors",
+    "Open http://localhost:3000/trips — trip list loads with data from API",
+    "Walk full booking flow: register → browse → book → payment → confirmation"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

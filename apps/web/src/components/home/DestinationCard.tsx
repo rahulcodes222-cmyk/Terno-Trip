@@ -7,38 +7,42 @@ interface DestinationCardProps {
   badge?: 'Popular' | 'Trending' | 'Top Rated';
 }
 
-const badgeColors: Record<string, string> = {
-  Popular:    'bg-primary text-white',
-  Trending:   'bg-blue-500 text-white',
-  'Top Rated': 'bg-green-500 text-white',
+const BADGE: Record<string, { label: string; color: string }> = {
+  Popular:    { label: 'POPULAR',   color: '#FF6B00' },
+  Trending:   { label: 'TRENDING',  color: '#0066FF' },
+  'Top Rated':{ label: 'TOP RATED', color: '#00A651' },
 };
 
 export default function DestinationCard({ image, name, subtitle, badge }: DestinationCardProps) {
+  const b = badge ? BADGE[badge] : null;
+
   return (
-    <div className="group relative overflow-hidden rounded-2xl" style={{ height: '256px' }}>
-      {/* Background image */}
+    /* height 220px — bigger cards as requested */
+    <div className="group relative overflow-hidden rounded-xl" style={{ height: '220px' }}>
       <img
         src={image}
         alt={name}
         className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        loading="lazy"
       />
 
-      {/* Gradient overlay */}
-      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 to-transparent" />
+      {/* Dark gradient bottom overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
-      {/* Badge */}
-      {badge && (
-        <div className="absolute left-3 top-3">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeColors[badge]}`}>
-            {badge}
-          </span>
-        </div>
+      {/* Badge — top right, exact from screenshot */}
+      {b && (
+        <span
+          className="absolute right-2.5 top-2.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white"
+          style={{ backgroundColor: b.color }}
+        >
+          {b.label}
+        </span>
       )}
 
-      {/* Bottom text */}
-      <div className="absolute inset-x-0 bottom-0 p-4">
-        <p className="font-bold text-white leading-tight">{name}</p>
-        <p className="text-xs text-gray-300 mt-0.5">{subtitle}</p>
+      {/* Name + subtitle — bottom left */}
+      <div className="absolute bottom-0 left-0 right-0 p-3">
+        <p className="text-sm font-bold leading-tight text-white">{name}</p>
+        <p className="mt-0.5 text-[11px] text-gray-300">{subtitle}</p>
       </div>
     </div>
   );

@@ -1,0 +1,48 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "API Gateway service (port 4000) at services/api-gateway/. Single public entry point. Verifies JWT from cookie or Authorization header, injects x-user-id/x-user-role/x-internal-secret headers, proxies to all downstream services. No database. Depends on FEAT-002 (JWT pattern) and FEAT-003 (service URLs). Independent of FEAT-005.",
+  "status": "pending",
+  "steps": [
+    "1. Create services/api-gateway/package.json: name '@terno/api-gateway', type 'module', version '1.0.0'. Scripts: dev='tsx watch src/index.ts', build='tsc', start='node dist/index.js'. Dependencies: express, http-proxy-middleware, jsonwebtoken, cookie-parser, cors, dotenv, morgan, zod, express-rate-limit. DevDependencies: typescript, tsx, @types/express, @types/jsonwebtoken, @types/cookie-parser, @types/cors, @types/morgan, @types/node.",
+
+    "2. Create services/api-gateway/tsconfig.json: { 'extends': '../../tsconfig.json', 'compilerOptions': { 'outDir': './dist', 'rootDir': './src', 'paths': {} }, 'include': ['src/**/*'], 'exclude': ['node_modules', 'dist'] }. The 'paths': {} is CRITICAL — without it TypeScript resolves @terno/shared to the source .ts file via the root alias, breaking prod builds. No moduleResolution override needed — inherits Node16 from root tsconfig.",
+
+    "3. Create services/api-gateway/.env.example: PORT=4000, JWT_ACCESS_SECRET=replace_with_a_strong_random_secret, INTERNAL_SERVICE_SECRET=replace_with_a_strong_random_secret, FRONTEND_URL=http://localhost:3000, AUTH_SERVICE_URL=http://localhost:4001, USER_SERVICE_URL=http://localhost:4002, TRIP_SERVICE_URL=http://localhost:4003, BOOKING_SERVICE_URL=http://localhost:4004, PAYMENT_SERVICE_URL=http://localhost:4005, NOTIFICATION_SERVICE_URL=http://localhost:4006, NODE_ENV=development. Copy to services/api-gateway/.env with same values (placeholder secrets are fine for dev).",
+
+    "4. Create services/api-gateway/src/config/env.ts — follow auth-service/src/config/env.ts pattern exactly. Zod schema validates: PORT (coerce.number, default 4000), JWT_ACCESS_SECRET (required string), INTERNAL_SERVICE_SECRET (required string), FRONTEND_URL (url, default http://localhost:3000), AUTH_SERVICE_URL (url), USER_SERVICE_URL (url), TRIP_SERVICE_URL (url), BOOKING_SERVICE_URL (url), PAYMENT_SERVICE_URL (url), NOTIFICATION_SERVICE_URL (url), NODE_ENV (enum dev/prod/test, default development). safeParse → if fail: console.error + throw. Export const env.",
+
+    "5. Create services/api-gateway/src/middleware/correlationId.ts — declare module augmentation on Express.Request to add 'correlationId?: string'. Middleware: generate UUID via crypto.randomUUID() (Node built-in, no import needed in ESM — use 'import { randomUUID } from crypto'). Set req.correlationId = uuid, set response header 'x-correlation-id'.",
+
+    "6. Create services/api-gateway/src/middleware/authenticate.ts — declare module augmentation on Express.Request to add 'user?: { id: string; role: string }'. Import jwt from 'jsonwebtoken' and env from '../config/env.js'. Function authenticate(req, res, next): reads cookie req.cookies?.access_token OR extracts Bearer token from req.headers.authorization. If no token → 401 { success: false, message: 'Authentication required' }. Try jwt.verify(token, env.JWT_ACCESS_SECRET) → payload typed as { sub: string; role: string; type: string }. Set req.user = { id: payload.sub, role: payload.role }. next(). Catch → 401 { success: false, message: 'Invalid or expired token' }. Function optionalAuthenticate(req, res, next): same token extraction, if token missing just call next(). If token present but invalid, still call next() (swallow error). If valid, set req.user then next().",
+
+    "7. Create services/api-gateway/src/middleware/rateLimiter.ts — import rateLimit from 'express-rate-limit'. Export rateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { success: false, error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests, please try again later.' } } }). Add comment: 'Replace with Redis-backed store (e.g. rate-limit-redis) in multi-instance production deployments.'",
+
+    "8. Create services/api-gateway/src/middleware/errorHandler.ts — same ErrorRequestHandler pattern as auth-service. Extra check: if (err as NodeJS.ErrnoException).code === 'ECONNREFUSED' → res.status(503).json({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Service temporarily unavailable' } }). Generic fallback → 500.",
+
+    "9. Create services/api-gateway/src/proxy/createProxy.ts — ESM named import: 'import { createProxyMiddleware } from \"http-proxy-middleware\"'. Import env from '../config/env.js'. Export function createServiceProxy(targetUrl: string): uses createProxyMiddleware({ target: targetUrl, changeOrigin: true, on: { proxyReq: (proxyReq, req: any) => { if (req.user?.id) proxyReq.setHeader('x-user-id', req.user.id); if (req.user?.role) proxyReq.setHeader('x-user-role', req.user.role); proxyReq.setHeader('x-internal-secret', env.INTERNAL_SERVICE_SECRET); if (req.correlationId) proxyReq.setHeader('x-correlation-id', req.correlationId); }, error: (err, req, res: any) => { res.status(503).json({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Service temporarily unavailable' } }); } } }).",
+
+    "10. Create services/api-gateway/src/routes/index.ts — add comment block at top: '/* API Gateway Route Table\\n * ========================\\n * /api/v1/auth/*          → auth-service:4001    (no auth — service handles own auth)\\n * /api/v1/users/*         → user-service:4002    (authenticate required)\\n * /api/v1/trips/*         → trip-service:4003    (optionalAuthenticate — public browsing OK)\\n * /api/v1/bookings/*      → booking-service:4004 (authenticate required)\\n * /api/v1/payments/*      → payment-service:4005 (authenticate required)\\n * /api/v1/notifications/* → notification-service:4006 (authenticate required)\\n */'. Create Express Router. Mount: router.use('/api/v1/auth', createServiceProxy(env.AUTH_SERVICE_URL)); router.use('/api/v1/users', authenticate, createServiceProxy(env.USER_SERVICE_URL)); router.use('/api/v1/trips', optionalAuthenticate, createServiceProxy(env.TRIP_SERVICE_URL)); router.use('/api/v1/bookings', authenticate, createServiceProxy(env.BOOKING_SERVICE_URL)); router.use('/api/v1/payments', authenticate, createServiceProxy(env.PAYMENT_SERVICE_URL)); router.use('/api/v1/notifications', authenticate, createServiceProxy(env.NOTIFICATION_SERVICE_URL)). Export router.",
+
+    "11. Create services/api-gateway/src/app.ts — follow auth-service/src/app.ts pattern. cors({ origin: env.FRONTEND_URL, credentials: true }), cookieParser(), express.json(), morgan('combined'), correlationId middleware, rateLimiter, mount router from routes/index.ts. GET /health → 200 { status: 'ok', service: 'api-gateway', upstreamServices: { auth: env.AUTH_SERVICE_URL, user: env.USER_SERVICE_URL, trip: env.TRIP_SERVICE_URL, booking: env.BOOKING_SERVICE_URL, payment: env.PAYMENT_SERVICE_URL, notification: env.NOTIFICATION_SERVICE_URL } }. app.use(errorHandler) last.",
+
+    "12. Create services/api-gateway/src/index.ts — first line: 'import dotenv from \"dotenv\"; dotenv.config();'. Then imports. app.listen(env.PORT, () => { console.log('🚀 api-gateway running on http://localhost:PORT [NODE_ENV]'); console.log('  → auth:         AUTH_SERVICE_URL'); console.log('  → user:         USER_SERVICE_URL'); ... (all 6 upstream URLs) }). No database connect. Graceful shutdown on SIGTERM/SIGINT."
+  ],
+  "acceptance_criteria": [
+    "cd services/api-gateway && npm run build exits 0 and produces dist/ directory",
+    "GET http://localhost:4000/health returns 200 { status: 'ok', service: 'api-gateway', upstreamServices: {...} }",
+    "GET http://localhost:4000/api/v1/trips (no cookie) proxied to trip-service — returns 200 trip list",
+    "GET http://localhost:4000/api/v1/bookings/my (no cookie) returns 401",
+    "POST http://localhost:4000/api/v1/auth/login proxied without auth middleware — returns auth-service response",
+    "x-correlation-id response header present on all responses",
+    "x-user-id and x-user-role forwarded to downstream services when valid JWT cookie present"
+  ],
+  "verification": [
+    "cd C:/Users/DELL/OneDrive/Desktop/terno_trip/services/api-gateway && npm install && npm run build",
+    "npm run dev (or tsx watch src/index.ts) — starts on port 4000",
+    "curl -s http://localhost:4000/health — expect 200 JSON",
+    "curl -s -I http://localhost:4000/api/v1/bookings/my — expect 401"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

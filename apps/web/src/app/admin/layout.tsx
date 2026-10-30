@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, MapPin, Briefcase, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, MapPin, Briefcase, Bus, Home, LogOut, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -11,7 +11,8 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/trips', label: 'Trips', icon: MapPin },
-  { href: '/admin/bookings', label: 'Bookings', icon: Briefcase },
+  { href: '/admin/master',   label: 'Master Dashboard', icon: Bus         },
+  { href: '/admin/bookings', label: 'Bookings',         icon: Briefcase   },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -21,16 +22,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
+    if (!isLoading && (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'master'))) {
       router.replace('/auth/login?returnUrl=/admin');
     }
-  }, [isLoading, isAuthenticated, user, router]);
+    // Masters can only access /admin/master — redirect them if they try other pages
+    if (!isLoading && isAuthenticated && user?.role === 'master') {
+      const allowedPaths = ['/admin/master'];
+      if (!allowedPaths.some(p => pathname.startsWith(p))) {
+        router.replace('/admin/master');
+      }
+    }
+  }, [isLoading, isAuthenticated, user, router, pathname]);
 
   if (isLoading) {
     return <LoadingSpinner fullPage />;
   }
 
-  if (!isAuthenticated || user?.role !== 'admin') {
+  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'master')) {
     return null;
   }
 
@@ -59,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Logo */}
         <div className="flex h-14 items-center gap-2 px-4 shrink-0">
           <img
-            src="/images/logo.jpeg"
+            src="/images/logo.svg"
             alt="TernoTrip"
             width={40}
             height={32}
@@ -71,11 +79,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </span>
         </div>
 
-        {/* Nav items */}
+        {/* Nav items — admins see all, masters see only Master Dashboard */}
         <nav className="flex-1 overflow-y-auto py-4">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
+          {NAV_ITEMS
+            .filter(item => user?.role === 'master' ? item.href === '/admin/master' : true)
+            .map(({ href, label, icon: Icon }) => {
+            const isActive = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -96,9 +105,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* User info + logout */}
-        <div className="border-t border-white/10 px-4 py-3 shrink-0">
-          <div className="mb-2 truncate text-sm font-medium text-white/80">
-            {user?.firstName} {user?.lastName}
+        <div className="border-t border-white/10 px-4 py-3 shrink-0 space-y-1">
+          {/* Back to site */}
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <Home className="h-4 w-4" />
+            Back to Site
+          </Link>
+          <div className="px-3 py-1 truncate text-xs font-medium text-white/50">
+            {(user as unknown as { name?: string })?.name ?? user?.firstName ?? 'Admin'}
           </div>
           <button
             onClick={handleLogout}

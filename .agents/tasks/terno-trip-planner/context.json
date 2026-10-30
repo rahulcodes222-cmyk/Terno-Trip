@@ -1,0 +1,30 @@
+{
+  "project_type": "npm workspaces monorepo — Next.js 14 App Router frontend + 7 Express microservices + 1 shared package + 1 shared-events package",
+  "language": "TypeScript (strict)",
+  "build_system": "npm workspaces; each package has its own tsconfig.json extending the root ../../tsconfig.json; backend services use 'type':'module' (ESM) with tsx for dev and tsc for prod build; Next.js uses its own build pipeline (next build). CRITICAL: every service tsconfig must set 'paths': {} to override root aliases — without this TS resolves @terno/shared to source .ts files in dev builds and breaks prod.",
+  "test_framework": "None required for initial build — verification is done via health endpoints and manual smoke tests described per FEAT",
+  "build_command": "npm run build (root runs all workspace builds); individual: cd services/<name> && npm run build; for web: cd apps/web && npm run build",
+  "test_command": "No automated test suite in initial build. Verification: start services and hit /health endpoints. Full smoke test: browse → register → book → pay → confirm.",
+  "verification_instructions": "1) Copy each service's .env.example to .env and fill in MONGODB_URI (format: mongodb://localhost:27017). 2) Run 'npm install' from repo root. 3) Start MongoDB locally. 4) Run 'npm run dev' from root (starts all 8 processes via concurrently). 5) Confirm each service returns 200 from /health. 6) Open http://localhost:3000 and walk the full user journey: browse trips, register, login, book, checkout, pay (mock), view booking history.",
+  "snapshot_or_generated_files": "null",
+  "environment_constraints": "Windows PowerShell workspace. All TypeScript source uses .js extensions in imports even for .ts source files (ESM/Node16 module resolution requirement). The workspace root is C:/Users/DELL/OneDrive/Desktop/terno_trip. next.config.js must be CommonJS (module.exports) — Next.js does not support ESM config. http-proxy-middleware v3 must use named import { createProxyMiddleware }. Cross-process events use direct HTTP POST (not EventEmitter which is in-memory per-process).",
+  "contribution_requirements": "Every backend service must: validate env vars at startup with Zod, centralized errorHandler middleware, /api/v1 route prefix, GET /health endpoint, never hardcode secrets, never trust frontend-submitted prices. Frontend: withCredentials: true on all API calls, 'use client' on all interactive components, SSR-safe sessionStorage access.",
+  "key_patterns": "1) Backend structure: src/index.ts (dotenv.config() first, then listen) → src/app.ts (Express setup) → src/routes/ → src/controllers/ → src/services/ → src/models/. 2) tsconfig extends ../../tsconfig.json with paths: {} override. 3) JWT payload: { sub: string, role: string, type: 'access' } — gateway reads sub→id, role→role. 4) Downstream services read x-user-id and x-user-role headers (NOT cookies) — see trip-service/src/middleware/extractUser.ts. 5) Internal service calls use x-internal-secret header — see booking-service/src/services/booking.service.ts. 6) Cross-process notifications via fetch() to /api/v1/internal/notifications with AbortSignal.timeout(5000). 7) Frontend uses TanStack Query v5 object syntax: useQuery({ queryKey, queryFn }) — no positional overloads. 8) AuthContext pattern: useQuery for /auth/me, imperative login/logout/register methods.",
+  "relevant_files": [
+    "package.json (root — workspaces config, concurrently dev script)",
+    "tsconfig.json (base — extended by all packages, has @terno/shared paths)",
+    "services/auth-service/src/config/env.ts (Zod env validation pattern)",
+    "services/auth-service/src/middleware/authenticate.ts (JWT cookie + Bearer pattern)",
+    "services/auth-service/src/middleware/errorHandler.ts (centralized error handler pattern)",
+    "services/auth-service/src/app.ts (Express setup pattern)",
+    "services/auth-service/src/index.ts (dotenv.config() first, graceful shutdown)",
+    "services/auth-service/src/utils/jwt.ts (JWT payload shape: sub, role, type)",
+    "services/auth-service/tsconfig.json (tsconfig pattern: extends + paths: {})",
+    "services/trip-service/src/middleware/extractUser.ts (how services read x-user-id header)",
+    "services/trip-service/src/middleware/serviceAuth.ts (x-internal-secret validation)",
+    "services/booking-service/src/services/booking.service.ts (cross-process HTTP pattern)",
+    "services/payment-service/src/services/payment.service.ts (payment flow + HTTP notifications)",
+    ".agents/tasks/terno-trip-planner/features/FEAT-003.json (findings about cross-process events)"
+  ],
+  "directory_structure": "root: package.json (workspaces: apps/*, services/*, packages/*), tsconfig.json, .env.example, docker-compose.yml, README.md | apps/web: Next.js 14 App Router (TO CREATE) | services/api-gateway: port 4000 (TO CREATE) | services/auth-service: port 4001 (DONE) | services/user-service: port 4002 (DONE) | services/trip-service: port 4003 (DONE) | services/booking-service: port 4004 (DONE) | services/payment-service: port 4005 (DONE) | services/notification-service: port 4006 (DONE) | packages/shared: @terno/shared (DONE, has dist/) | services/shared-events: @terno/shared-events (in-memory EventEmitter, not used cross-process)"
+}

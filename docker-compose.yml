@@ -1,12 +1,15 @@
 version: "3.9"
 
-# ─── Development Orchestration ───────────────────────────────────────────────
-# During local development, run services directly with: npm run dev (from root)
-# This file provides MongoDB and is useful for CI or full-stack Docker runs.
+# ─── Terno Trip Planner — Docker Compose ────────────────────────────────────
 #
-# Quick start:
-#   docker-compose up -d mongodb     # start only the database
-#   npm run dev                       # start all services with hot-reload
+# Quick start (full Docker stack):
+#   1. Copy .env files and fill in MONGODB_URI (or use the mongodb service below)
+#   2. docker-compose up --build -d
+#   3. Visit http://localhost:3000
+#
+# Local development (faster, with hot-reload):
+#   docker-compose up -d mongodb        # start only the database
+#   npm run dev                          # start all services with tsx watch
 
 services:
   # ── MongoDB ──────────────────────────────────────────────────────────────
@@ -19,7 +22,6 @@ services:
     volumes:
       - mongodb_data:/data/db
     environment:
-      # Remove these lines if your MONGODB_URI uses Atlas (no local auth needed)
       MONGO_INITDB_ROOT_USERNAME: terno
       MONGO_INITDB_ROOT_PASSWORD: terno_dev_password
     healthcheck:
@@ -28,94 +30,154 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Application services (commented out — run via 'npm run dev' locally) ──
+  # ── API Gateway ──────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: terno_api_gateway
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file: services/api-gateway/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # api-gateway:
-  #   build:
-  #     context: .
-  #     dockerfile: services/api-gateway/Dockerfile
-  #   ports:
-  #     - "4000:4000"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
+  # ── Auth Service ─────────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: terno_auth_service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    env_file: services/auth-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # auth-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/auth-service/Dockerfile
-  #   ports:
-  #     - "4001:4001"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
+  # ── User Service ─────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    container_name: terno_user_service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    env_file: services/user-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # user-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/user-service/Dockerfile
-  #   ports:
-  #     - "4002:4002"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
+  # ── Trip Service ─────────────────────────────────────────────────────────
+  trip-service:
+    build:
+      context: .
+      dockerfile: services/trip-service/Dockerfile
+    container_name: terno_trip_service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    env_file: services/trip-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4003/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # trip-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/trip-service/Dockerfile
-  #   ports:
-  #     - "4003:4003"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
+  # ── Booking Service ──────────────────────────────────────────────────────
+  booking-service:
+    build:
+      context: .
+      dockerfile: services/booking-service/Dockerfile
+    container_name: terno_booking_service
+    restart: unless-stopped
+    ports:
+      - "4004:4004"
+    env_file: services/booking-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # booking-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/booking-service/Dockerfile
-  #   ports:
-  #     - "4004:4004"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
+  # ── Payment Service ──────────────────────────────────────────────────────
+  payment-service:
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+    container_name: terno_payment_service
+    restart: unless-stopped
+    ports:
+      - "4005:4005"
+    env_file: services/payment-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4005/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # payment-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/payment-service/Dockerfile
-  #   ports:
-  #     - "4005:4005"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
+  # ── Notification Service ─────────────────────────────────────────────────
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: terno_notification_service
+    restart: unless-stopped
+    ports:
+      - "4006:4006"
+    env_file: services/notification-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4006/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
-  # notification-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/notification-service/Dockerfile
-  #   ports:
-  #     - "4006:4006"
-  #   env_file: .env
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
-
-  # web:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/web/Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   env_file: apps/web/.env.local
-  #   depends_on:
-  #     - api-gateway
+  # ── Next.js Web App ──────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://api-gateway:4000
+    container_name: terno_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: apps/web/.env.local
+    depends_on:
+      api-gateway:
+        condition: service_healthy
 
 volumes:
   mongodb_data:

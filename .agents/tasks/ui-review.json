@@ -1,0 +1,9 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "Completed-trips filter uses `.every()` instead of `.some()` (or first-date check), causing the section to almost always fall back to trendingTrips.slice(0,3) and display non-completed trips with a misleading 'COMPLETED' badge. Fix: change to `new Date(t.startDates[0]) <= now`.",
+    "TripCard.tsx uses next/image with unconstrained `trip.coverImage`. Safe for current whitelisted hosts but will crash the /trips page at runtime for any image URL from a non-whitelisted domain. Add a fallback src or widen remotePatterns.",
+    "All BlogCard hrefs and the 'Read all stories' link point to the stub anchor `#blog`. Should be tracked as a known placeholder before shipping."
+  ],
+  "reviewDoc": "c:/Users/DELL/OneDrive/Desktop/terno_trip/.agents/tasks/ui-review.md"
+}

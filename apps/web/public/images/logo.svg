@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 280" fill="none">
+
+  <!-- ═══ TAIL FEATHERS (behind body) ═══ -->
+  <path d="M95 148 C82 166 70 178 55 188" stroke="#1B2E6B" stroke-width="2.5" fill="none"/>
+  <path d="M95 148 C80 164 68 176 55 188 C70 176 83 162 96 145Z" fill="#FF4500"/>
+  <path d="M99 150 C88 167 80 180 72 190 C82 178 90 165 100 148Z" fill="#FF6B00"/>
+  <path d="M103 151 C96 168 90 181 84 192 C91 180 97 167 104 150Z" fill="#FFA500"/>
+  <path d="M107 151 C103 168 100 181 97 192 C100 180 103 167 108 150Z" fill="#FFC107"/>
+
+  <!-- ═══ LEFT WING (large, spreading up-left) ═══ -->
+  <!-- Wing base - dark red/crimson -->
+  <path d="M100 118 C85 100 68 82 48 64 C32 50 18 40 8 34
+           C22 44 38 56 56 70 C74 84 90 100 104 120Z"
+        fill="#CC2200" stroke="#1B2E6B" stroke-width="2.5"/>
+  <!-- Wing middle - orange -->
+  <path d="M100 120 C88 104 74 90 58 76 C44 64 32 56 22 50
+           C34 58 48 68 62 80 C76 92 88 106 102 122Z"
+        fill="#FF4500" stroke="#1B2E6B" stroke-width="1.5"/>
+  <!-- Wing inner - golden orange -->
+  <path d="M100 122 C90 110 80 100 68 90 C58 82 50 76 42 72
+           C52 78 62 86 72 96 C82 106 90 116 102 126Z"
+        fill="#FF6B00"/>
+  <!-- Wing feather highlights -->
+  <path d="M14 37 C30 48 50 62 68 78" stroke="#FF6600" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M26 43 C40 53 56 65 72 80" stroke="#FF8800" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M40 52 C52 60 64 70 76 82" stroke="#FFAA00" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- ═══ RIGHT WING (smaller, sweeping right) ═══ -->
+  <path d="M142 118 C158 106 174 96 188 90 C200 86 210 84 218 84
+           C208 88 196 94 182 102 C168 110 154 120 140 132Z"
+        fill="#FFB300" stroke="#1B2E6B" stroke-width="2"/>
+  <path d="M140 122 C154 114 166 108 178 104 C188 102 196 102 202 104
+           C194 104 184 106 172 110 C160 114 148 122 138 132Z"
+        fill="#FFC107"/>
+
+  <!-- ═══ BODY (yellow/golden) ═══ -->
+  <ellipse cx="118" cy="128" rx="32" ry="18"
+           fill="#FFC107" stroke="#1B2E6B" stroke-width="2.5"
+           transform="rotate(-15 118 128)"/>
+  <!-- Body belly - white/cream -->
+  <ellipse cx="116" cy="132" rx="16" ry="10"
+           fill="#FFFFFF" opacity="0.9"
+           transform="rotate(-15 116 132)"/>
+  <!-- Body shading -->
+  <ellipse cx="120" cy="122" rx="20" ry="10"
+           fill="#FFD54F" opacity="0.5"
+           transform="rotate(-15 120 122)"/>
+
+  <!-- ═══ HEAD (dark navy blue) ═══ -->
+  <circle cx="148" cy="110" r="20" fill="#1B2E6B"/>
+  <!-- Head highlight - lighter navy -->
+  <ellipse cx="143" cy="104" rx="10" ry="8" fill="#2A4499" opacity="0.5"/>
+
+  <!-- ═══ EYE ═══ -->
+  <circle cx="155" cy="106" r="5.5" fill="white"/>
+  <circle cx="156.5" cy="106" r="3" fill="#1B2E6B"/>
+  <circle cx="157.5" cy="104.5" r="1.2" fill="white"/>
+
+  <!-- ═══ BEAK (orange-red, pointy) ═══ -->
+  <path d="M163 110 L188 105 L163 117Z" fill="#FF3300"/>
+  <path d="M163 110 L186 105 L163 114Z" fill="#FF5500"/>
+  <!-- Beak line -->
+  <line x1="163" y1="111" x2="186" y2="106" stroke="#CC2200" stroke-width="1"/>
+
+</svg>

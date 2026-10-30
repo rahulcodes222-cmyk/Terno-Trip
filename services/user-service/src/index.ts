@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 
 // env must be imported AFTER dotenv.config() so process.env is populated
 import { env } from "./config/env.js";

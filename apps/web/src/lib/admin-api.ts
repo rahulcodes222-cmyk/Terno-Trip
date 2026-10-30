@@ -16,8 +16,15 @@ export async function adminDeleteTrip(id: string): Promise<void> {
 }
 
 export async function adminGetTripById(id: string): Promise<ITrip> {
-  const res = await apiClient.get<ApiResponse<ITrip>>(`/api/v1/admin/trips/${id}`);
-  return res.data.data;
+  // Fetch all trips and find by _id (no direct admin GET by ID endpoint)
+  const res = await apiClient.get<{ success: boolean; data: ITrip[] }>(
+    '/api/v1/trips',
+    { params: { limit: 200, page: 1 } }
+  );
+  const trips = res.data.data ?? [];
+  const found = trips.find((t) => t._id === id || t.slug === id);
+  if (!found) throw new Error('Trip not found');
+  return found;
 }
 
 export async function adminGetAllBookings(params: {
