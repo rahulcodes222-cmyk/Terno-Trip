@@ -10,10 +10,17 @@ const envSchema = z.object({
     .min(1, "INTERNAL_SERVICE_SECRET cannot be empty"),
   BOOKING_SERVICE_URL: z.string().url().default("http://localhost:4004"),
   NOTIFICATION_SERVICE_URL: z.string().url().default("http://localhost:4006"),
-  PAYMENT_PROVIDER: z.enum(["mock", "razorpay", "stripe"]).default("mock"),
+  PAYMENT_PROVIDER: z.enum(["mock", "cashfree", "razorpay", "stripe"]).default("mock"),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  // ─── Cashfree ────────────────────────────────────────────────────────────────
+  CASHFREE_APP_ID: z.string().optional().default(""),
+  CASHFREE_SECRET_KEY: z.string().optional().default(""),
+  CASHFREE_ENV: z.enum(["sandbox", "production"]).optional().default("sandbox"),
+  CASHFREE_API_URL: z.string().url().optional().default("https://sandbox.cashfree.com/pg"),
+  FRONTEND_URL: z.string().url().optional().default("http://localhost:3000"),
+  PAYMENT_WEBHOOK_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

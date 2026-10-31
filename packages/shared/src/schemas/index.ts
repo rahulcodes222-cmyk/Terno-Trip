@@ -103,8 +103,10 @@ export const travellerSchema = z.object({
     .min(1)
     .max(100)
     .trim(),
+  // z.coerce.number() accepts string inputs from HTML forms ('25' -> 25)
   age: z
-    .number({ required_error: "Age is required" })
+    .coerce
+    .number({ invalid_type_error: "Age must be a number" })
     .int()
     .min(1, "Age must be at least 1")
     .max(120, "Age must be at most 120"),
@@ -117,7 +119,9 @@ export const createBookingSchema = z.object({
     .min(1, "Trip ID is required"),
   departureDate: z
     .string({ required_error: "Departure date is required" })
-    .datetime({ message: "Invalid departure date" }),
+    // Accept both 'YYYY-MM-DD' and full ISO datetime
+    .transform((v) => v.includes('T') ? v : new Date(v + 'T00:00:00.000Z').toISOString())
+    .pipe(z.string().datetime({ message: "Invalid departure date" })),
   travellers: z
     .array(travellerSchema)
     .min(1, "At least one traveller is required")
@@ -127,9 +131,16 @@ export const createBookingSchema = z.object({
     .email("Invalid contact email"),
   contactPhone: z
     .string({ required_error: "Contact phone is required" })
-    .regex(/^\+?[1-9]\d{6,14}$/, "Invalid contact phone number"),
+    // Strip spaces, dashes, parens before validating so users can enter any common format
+    .transform((v) => v.replace(/[\s\-()]/g, ""))
+    .pipe(
+      z
+        .string()
+        .regex(/^\+?[1-9]\d{6,14}$/, "Invalid contact phone number")
+    ),
   specialRequests: z.string().max(1000).optional(),
 });
+
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 

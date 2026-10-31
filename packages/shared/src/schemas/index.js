@@ -107,7 +107,8 @@ export const createBookingSchema = z.object({
         .email("Invalid contact email"),
     contactPhone: z
         .string({ required_error: "Contact phone is required" })
-        .regex(/^\+?[1-9]\d{6,14}$/, "Invalid contact phone number"),
+        .transform((v) => v.replace(/[\s\-()]/g, ""))
+        .pipe(z.string().regex(/^\+?[1-9]\d{6,14}$/, "Invalid contact phone number")),
     specialRequests: z.string().max(1000).optional(),
 });
 // ─── Payment Schemas ──────────────────────────────────────────────────────────

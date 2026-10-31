@@ -9,6 +9,7 @@ import bookingRouter from "./routes/booking.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
+console.log("[booking-service] ✅ app reloaded");
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
 app.use(helmet());

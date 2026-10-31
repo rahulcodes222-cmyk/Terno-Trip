@@ -7,6 +7,7 @@ import {
   markRead,
   markAllRead,
   internalCreateNotification,
+  sendBookingConfirmationEmail,
 } from "../controllers/notification.controller.js";
 
 const router = Router();
@@ -23,4 +24,8 @@ router.patch("/api/v1/notifications/read-all", extractUser, markAllRead);
 // processes. This HTTP endpoint is the cross-process notification mechanism.
 router.post("/api/v1/internal/notifications", serviceAuth, internalCreateNotification);
 
+// ─── Booking Confirmation Email (called by payment-service after payment) ──────
+router.post("/api/v1/internal/notifications/booking-email", serviceAuth, sendBookingConfirmationEmail);
+
 export default router;
+

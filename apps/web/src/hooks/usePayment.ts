@@ -6,6 +6,8 @@ interface CreateOrderPayload {
   bookingRef: string;
   amount: number;
   currency?: string;
+  email?: string;
+  phone?: string;
 }
 
 interface CreateOrderResult {
@@ -13,12 +15,14 @@ interface CreateOrderResult {
   orderId: string;
   amount: number;
   currency: string;
+  status: string;
+  paymentSessionId?: string;
 }
 
 interface ProcessPaymentResult {
-  paymentRef: string;
+  _id: string;
   status: string;
-  bookingRef?: string;
+  bookingId: string;
 }
 
 export function useCreateOrder() {

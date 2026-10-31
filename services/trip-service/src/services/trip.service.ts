@@ -118,12 +118,18 @@ export async function checkAvailability(
   }
 
   // Validate that the requested departure date is in the trip's startDates
-  const reqDate = new Date(departureDate);
-  const reqDateStr = reqDate.toISOString().split("T")[0];
-  const isValidDate = trip.startDates.some((d: Date) => {
-    const sd = new Date(d).toISOString().split("T")[0];
-    return sd === reqDateStr;
-  });
+  // Normalize both to YYYY-MM-DD using LOCAL date to avoid UTC offset issues
+  const normalizeDate = (d: string | Date): string => {
+    const date = new Date(d);
+    // Use UTC date parts to avoid timezone shifts
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const reqDateStr = normalizeDate(departureDate);
+  const isValidDate = trip.startDates.some((d: Date) => normalizeDate(d) === reqDateStr);
 
   if (!isValidDate) {
     return {

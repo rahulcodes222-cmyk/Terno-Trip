@@ -71,7 +71,7 @@ export default function TripDetailPage() {
           <div className="flex-1 min-w-0 space-y-8">
             {/* Gallery */}
             <TripImageGallery
-              images={[trip.coverImage, ...trip.images]}
+              images={[trip.coverImage, ...(trip.images ?? [])]}
               title={trip.title}
             />
 
@@ -112,11 +112,11 @@ export default function TripDetailPage() {
             </section>
 
             {/* Highlights */}
-            {trip.highlights.length > 0 && (
+            {(trip.highlights ?? []).length > 0 && (
               <section>
                 <h2 className="mb-3 text-lg font-bold text-gray-900">Trip Highlights</h2>
                 <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {trip.highlights.map((h, i) => (
+                  {(trip.highlights ?? []).map((h, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
                       <span className="text-primary">✓</span> {h}
                     </li>
@@ -128,13 +128,13 @@ export default function TripDetailPage() {
             {/* Itinerary */}
             <section>
               <h2 className="mb-4 text-lg font-bold text-gray-900">Day-by-Day Itinerary</h2>
-              <ItineraryAccordion itinerary={trip.itinerary} />
+              <ItineraryAccordion itinerary={trip.itinerary ?? []} />
             </section>
 
             {/* Inclusions / Exclusions */}
             <section>
               <h2 className="mb-4 text-lg font-bold text-gray-900">What&apos;s Included</h2>
-              <InclusionsExclusions inclusions={trip.inclusions} exclusions={trip.exclusions} />
+              <InclusionsExclusions inclusions={trip.inclusions ?? []} exclusions={trip.exclusions ?? []} />
             </section>
 
             {/* Cancellation Policy */}
@@ -182,7 +182,7 @@ export default function TripDetailPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="">Select a date</option>
-                  {trip.startDates.map((d) => (
+                  {(trip.startDates ?? []).map((d) => (
                     <option key={d} value={d}>
                       {formatDate(d)}
                     </option>

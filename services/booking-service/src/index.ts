@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config"; // reloaded: inline schema fix in booking.controller.ts
 
 // env must be imported AFTER dotenv.config() so process.env is populated
 import { env } from "./config/env.js";

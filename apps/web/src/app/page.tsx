@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useFeaturedTrips, useTrendingTrips } from '@/hooks/useTrips';
+import { useFeaturedTrips, useTrendingTrips, useTrips } from '@/hooks/useTrips';
 import PageLayout from '@/components/layout/PageLayout';
 import HeroSlider from '@/components/home/HeroSlider';
 import StatsBar from '@/components/home/StatsBar';
@@ -56,12 +56,16 @@ function SkeletonCard() {
 export default function HomePage() {
   const { data: featuredTrips = [], isLoading: fl } = useFeaturedTrips();
   const { data: trendingTrips = [],  isLoading: tl } = useTrendingTrips();
+  const { data: tripsResponse = { data: [] }, isLoading: al } = useTrips();
+  const allTrips = tripsResponse.data ?? [];
   const now = new Date();
 
-  const displayUpcoming  = featuredTrips.slice(0, 3);
-  const completedTrips   = trendingTrips.filter((t) => t.startDates.length > 0 && new Date(t.startDates[0]) <= now).slice(0, 3);
+  const displayUpcoming = allTrips
+    .filter((t) => t.isActive && t.startDates.some((d) => new Date(d) >= now))
+    .slice(0, 3);
+  const completedTrips = trendingTrips.filter((t) => t.startDates.length > 0 && new Date(t.startDates[0]) <= now).slice(0, 3);
   const displayCompleted = completedTrips.length ? completedTrips : trendingTrips.slice(0, 3);
-  const isLoading = fl || tl;
+  const isLoading = fl || tl || al;
 
   /* ── Shared section wrapper — white card on gray page ── */
   const Section = ({ id, children, className = '' }: { id?: string; children: React.ReactNode; className?: string }) => (

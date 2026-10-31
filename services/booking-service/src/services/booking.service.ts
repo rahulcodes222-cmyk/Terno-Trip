@@ -123,13 +123,17 @@ interface TripSnapshotResponse {
 }
 
 async function fetchTripSnapshot(tripId: string) {
-  // Try to get full trip details for snapshot; fall back to minimal data
-  const response = await fetch(`${env.TRIP_SERVICE_URL}/api/v1/trips/id/${tripId}`, {
+  // Use INTERNAL endpoint to fetch trip by ID (serviceAuth with x-internal-secret)
+  const response = await fetch(`${env.TRIP_SERVICE_URL}/api/v1/internal/trips/${tripId}`, {
+    headers: { 
+      "Content-Type": "application/json",
+      "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
+    },
     signal: AbortSignal.timeout(5000),
   });
 
   if (!response.ok) {
-    // Trip details endpoint by ID might use slug — return minimal snapshot
+    console.error(`[booking-service] fetchTripSnapshot failed: ${response.status}`);
     return null;
   }
 
@@ -153,7 +157,43 @@ export interface CreateBookingInput {
   specialRequests?: string;
 }
 
+import { env } from "../config/env.js";
+
+// Helper to notify notification‑service about a newly created booking
+async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void> {
+  try {
+    await fetch(`${env.NOTIFICATION_SERVICE_URL}/api/v1/internal/notifications/booking-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
+      },
+      body: JSON.stringify({
+        userName: "Traveller",
+        userEmail: booking.contactEmail,
+        bookingRef: booking.bookingRef,
+        tripTitle: booking.tripSnapshot?.title ?? "Trip",
+        destination: booking.tripSnapshot?.destination ?? "",
+        departureDate: new Date(booking.departureDate).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        travellersCount: booking.travellers?.length ?? 1,
+        totalAmount: booking.totalAmount,
+        // No paymentId yet – booking is pending
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    console.log(`[booking-service] Booking email POST succeeded → user: ${booking.contactEmail}`);
+
+  } catch (err) {
+    console.error("[booking-service] Failed to send booking‑created email:", err);
+  }
+}
+
 export async function createBooking(
+
   data: CreateBookingInput,
   userId: string
 ): Promise<IBookingDocument> {
@@ -196,6 +236,10 @@ export async function createBooking(
 
   await booking.save();
 
+  // Send booking confirmation email (user + admin) – best‑effort, ignore failures
+  await sendBookingCreatedEmail(booking);
+  console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}, admin: ${env.ADMIN_EMAIL}`);
+
   // 5. Notify user via HTTP (cross-process — in-memory EventEmitter won't work here)
   await notifyUser({
     userId,
@@ -234,6 +278,22 @@ export async function getBookingByRef(
   userId: string
 ): Promise<IBookingDocument | null> {
   return Booking.findOne({ bookingRef: ref, userId }).lean() as Promise<IBookingDocument | null>;
+}
+
+// ─── Get Booking by ID (internal use — no userId check) ──────────────────────
+
+export async function getBookingById(
+  id: string
+): Promise<IBookingDocument | null> {
+  return Booking.findById(id).lean() as Promise<IBookingDocument | null>;
+}
+
+// ─── Get Booking by Ref — internal, no userId check ──────────────────────────
+
+export async function getBookingByRefInternal(
+  ref: string
+): Promise<IBookingDocument | null> {
+  return Booking.findOne({ bookingRef: ref }).lean() as Promise<IBookingDocument | null>;
 }
 
 // ─── Cancel Booking ───────────────────────────────────────────────────────────

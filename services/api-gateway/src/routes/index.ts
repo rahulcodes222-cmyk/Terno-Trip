@@ -4,6 +4,7 @@
  * /api/v1/users/*         → user-service:4002    (authenticate required)
  * /api/v1/trips/*         → trip-service:4003    (optionalAuthenticate — public browsing OK)
  * /api/v1/bookings/*      → booking-service:4004 (authenticate required)
+ * /api/v1/payments/webhook → payment-service     (PUBLIC — Cashfree webhook, no auth)
  * /api/v1/payments/*      → payment-service:4005 (authenticate required)
  * /api/v1/notifications/* → notification-service:4006 (authenticate required)
  * /api/v1/admin/*         → trip-service:4003    (authenticate required; adminAuth enforced in service)
@@ -35,6 +36,11 @@ router.use("/api/v1/trips",
 router.use("/api/v1/bookings",
   authenticate,
   createServiceProxy(env.BOOKING_SERVICE_URL, "/api/v1/bookings"));
+
+// ─── Cashfree Webhook — PUBLIC (no auth) — must be BEFORE the authenticated payments route ──
+// Cashfree's servers call this URL after a payment event. No user token is sent.
+router.use("/api/v1/payments/webhook",
+  createServiceProxy(env.PAYMENT_SERVICE_URL, "/api/v1/payments/webhook"));
 
 router.use("/api/v1/payments",
   authenticate,

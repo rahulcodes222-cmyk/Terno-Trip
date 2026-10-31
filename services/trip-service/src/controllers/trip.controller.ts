@@ -262,3 +262,26 @@ export async function updateAvailability(
     next(err);
   }
 }
+
+// Internal GET by ID — used by booking-service to fetch trip snapshot
+export async function getTripByIdInternal(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: "Invalid trip ID" });
+      return;
+    }
+    const trip = await Trip.findById(id).lean();
+    if (!trip) {
+      res.status(404).json({ success: false, message: "Trip not found" });
+      return;
+    }
+    res.status(200).json(createApiResponse(trip, "Trip fetched"));
+  } catch (err) {
+    next(err);
+  }
+}

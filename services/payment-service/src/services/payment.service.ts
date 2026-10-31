@@ -17,6 +17,7 @@
 
 import { Payment, type IPaymentDocument } from "../models/Payment.js";
 import { MockPaymentProvider } from "../providers/MockPaymentProvider.js";
+import { CashfreePaymentProvider } from "../providers/CashfreePaymentProvider.js";
 import type { PaymentScenario } from "../providers/PaymentProvider.interface.js";
 import { env } from "../config/env.js";
 
@@ -24,6 +25,7 @@ import { env } from "../config/env.js";
 
 const providers = {
   mock: new MockPaymentProvider(),
+  cashfree: new CashfreePaymentProvider(),
 };
 
 function getProvider() {
@@ -89,14 +91,41 @@ async function notifyUserPayment(
   }
 }
 
+async function sendBookingConfirmationEmail(payload: {
+  userName: string;
+  userEmail: string;
+  bookingRef: string;
+  tripTitle: string;
+  destination: string;
+  departureDate: string;
+  travellersCount: number;
+  totalAmount: number;
+  paymentId?: string;
+}): Promise<void> {
+  try {
+    await fetch(`${env.NOTIFICATION_SERVICE_URL}/api/v1/internal/notifications/booking-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (err) {
+    console.error("[payment-service] Failed to send booking confirmation email:", err);
+  }
+}
+
 // ─── Create Order ─────────────────────────────────────────────────────────────
 
 export async function createOrder(
   bookingId: string,
   userId: string,
   amount: number,
-  currency = "INR"
-): Promise<{ payment: IPaymentDocument; orderId: string; amount: number }> {
+  currency = "INR",
+  userMeta?: { userId?: string; email?: string; phone?: string }
+): Promise<{ payment: IPaymentDocument; orderId: string; amount: number; paymentSessionId?: string }> {
   const provider = getProvider();
   const paymentRef = generatePaymentRef();
 
@@ -112,9 +141,12 @@ export async function createOrder(
   });
   await payment.save();
 
-  // Create order with provider
+  // Create order with provider (pass user metadata for Cashfree customer_details)
   const orderResult = await provider.createOrder(bookingId, amount, currency, {
     paymentRef,
+    userId,
+    email: userMeta?.email,
+    phone: userMeta?.phone,
   });
 
   // Store provider order ID
@@ -125,7 +157,35 @@ export async function createOrder(
     payment,
     orderId: orderResult.orderId,
     amount: orderResult.amount,
+    // paymentSessionId returned by Cashfree — used by frontend Cashfree JS SDK
+    paymentSessionId: orderResult.providerData?.paymentSessionId as string | undefined,
   };
+}
+
+// ─── Fetch Booking Details (for email) ───────────────────────────────────────
+
+interface BookingDetails {
+  bookingRef: string;
+  tripSnapshot: { title: string; destination: string };
+  departureDate: string;
+  travellers: unknown[];
+  totalAmount: number;
+  contactEmail: string;
+  userId: string;
+}
+
+async function fetchBookingDetails(bookingId: string): Promise<BookingDetails | null> {
+  try {
+    const res = await fetch(`${env.BOOKING_SERVICE_URL}/api/v1/internal/bookings/${bookingId}`, {
+      headers: { "x-internal-secret": env.INTERNAL_SERVICE_SECRET },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: BookingDetails };
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Process Payment ──────────────────────────────────────────────────────────
@@ -150,8 +210,11 @@ export async function processPayment(
       payment.providerPaymentId = result.paymentId;
       await payment.save();
 
+      // Fetch booking details for email (best-effort)
+      const bookingDetails = await fetchBookingDetails(payment.bookingId);
+
       // Notify booking-service and user via HTTP (cross-process)
-      await Promise.all([
+      const notifications: Promise<void>[] = [
         notifyBookingService(payment.bookingId, "Paid", String(payment._id)),
         notifyUserPayment(
           payment.userId,
@@ -163,7 +226,28 @@ export async function processPayment(
             amount: payment.amount,
           }
         ),
-      ]);
+      ];
+
+      // Send confirmation emails (user + admin) if we have booking details
+      if (bookingDetails) {
+        notifications.push(
+          sendBookingConfirmationEmail({
+            userName: "Traveller", // Will be enriched if user-service data available
+            userEmail: bookingDetails.contactEmail,
+            bookingRef: bookingDetails.bookingRef,
+            tripTitle: bookingDetails.tripSnapshot?.title ?? "Your Trip",
+            destination: bookingDetails.tripSnapshot?.destination ?? "",
+            departureDate: new Date(bookingDetails.departureDate).toLocaleDateString("en-IN", {
+              day: "numeric", month: "long", year: "numeric",
+            }),
+            travellersCount: bookingDetails.travellers?.length ?? 1,
+            totalAmount: payment.amount,
+            paymentId: String(payment._id),
+          })
+        );
+      }
+
+      await Promise.all(notifications);
     } else if (result.status === "Failed") {
       payment.status = "Failed";
       payment.failureReason = result.reason ?? "Payment failed";
@@ -241,4 +325,78 @@ export async function refundPayment(
   }
 
   return payment;
+}
+
+// ─── Handle Cashfree Webhook ──────────────────────────────────────────────────
+// Called by cashfreeWebhook controller when Cashfree posts to our webhook URL.
+
+export async function handleWebhook(
+  providerOrderId: string,
+  orderStatus: string
+): Promise<void> {
+  const payment = await Payment.findOne({ providerOrderId });
+  if (!payment) {
+    console.warn(`[payment-service] Webhook: no payment found for order ${providerOrderId}`);
+    return;
+  }
+
+  // Avoid re-processing already finalised payments
+  if (payment.status === "Success" || payment.status === "Refunded") return;
+
+  const status = orderStatus.toUpperCase();
+
+  if (status === "PAID") {
+    payment.status = "Success";
+    await payment.save();
+
+    // Fetch booking details for email
+    const bookingDetails = await fetchBookingDetails(payment.bookingId);
+
+    const promises: Promise<void>[] = [
+      notifyBookingService(payment.bookingId, "Paid", String(payment._id)),
+      notifyUserPayment(
+        payment.userId,
+        "Payment Confirmed",
+        `Your payment of ₹${payment.amount.toLocaleString("en-IN")} was successful. Booking has been confirmed.`,
+        { bookingId: payment.bookingId, paymentId: String(payment._id), amount: payment.amount }
+      ),
+    ];
+
+    if (bookingDetails) {
+      promises.push(
+        sendBookingConfirmationEmail({
+          userName: "Traveller",
+          userEmail: bookingDetails.contactEmail,
+          bookingRef: bookingDetails.bookingRef,
+          tripTitle: bookingDetails.tripSnapshot?.title ?? "Your Trip",
+          destination: bookingDetails.tripSnapshot?.destination ?? "",
+          departureDate: new Date(bookingDetails.departureDate).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          travellersCount: bookingDetails.travellers?.length ?? 1,
+          totalAmount: payment.amount,
+          paymentId: String(payment._id),
+        })
+      );
+    }
+
+    await Promise.all(promises);
+
+  } else if (status === "EXPIRED" || status === "TERMINATED") {
+    payment.status = "Failed";
+    payment.failureReason = `Cashfree order ${status.toLowerCase()}`;
+    await payment.save();
+
+    await Promise.all([
+      notifyBookingService(payment.bookingId, "Failed"),
+      notifyUserPayment(
+        payment.userId,
+        "Payment Failed",
+        `Your payment could not be processed. Reason: ${payment.failureReason}. Please try again.`,
+        { bookingId: payment.bookingId }
+      ),
+    ]);
+  }
 }

@@ -27,7 +27,11 @@ const travellerSchema = z.object({
 const checkoutSchema = z.object({
   travellers: z.array(travellerSchema),
   contactEmail: z.string().email('Valid email required'),
-  contactPhone: z.string().min(10, 'Valid phone required'),
+  // Strip spaces/dashes before validation so +91 98765 43210 works
+  contactPhone: z
+    .string()
+    .min(10, 'Valid phone required')
+    .transform((v) => v.replace(/[\s\-()]/g, '')),
   specialRequests: z.string().optional(),
   agreePolicy: z.boolean().refine((v) => v, 'You must acknowledge the cancellation policy'),
 });
@@ -61,6 +65,7 @@ function CheckoutContent() {
     register,
     control,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutForm>({
     resolver: zodResolver(checkoutSchema),
@@ -68,9 +73,11 @@ function CheckoutContent() {
       travellers: Array.from({ length: travellersCount }, () => ({
         firstName: '',
         lastName: '',
-        age: 0,
+        age: undefined as unknown as number,
       })),
       contactEmail: user?.email ?? '',
+      contactPhone: '',
+      agreePolicy: false,
     },
   });
 
@@ -88,12 +95,21 @@ function CheckoutContent() {
   const onSubmit = async (data: CheckoutForm) => {
     setBookingError('');
     try {
+      // Server requires full ISO 8601 datetime — convert YYYY-MM-DD from URL
+      const departureDateISO = departureDate.includes('T')
+        ? departureDate
+        : new Date(departureDate + 'T00:00:00.000Z').toISOString();
+
       const booking = await createBooking.mutateAsync({
         tripId: trip._id,
-        departureDate,
-        travellers: data.travellers,
+        departureDate: departureDateISO,
+        travellers: data.travellers.map((t) => ({
+          firstName: t.firstName,
+          lastName: t.lastName,
+          age: Number(t.age), // ensure number type for server z.number()
+        })),
         contactEmail: data.contactEmail,
-        contactPhone: data.contactPhone,
+        contactPhone: data.contactPhone, // already stripped of spaces by zod transform
         specialRequests: data.specialRequests,
       });
       setCreatedBookingRef(booking.bookingRef);
@@ -171,7 +187,7 @@ function CheckoutContent() {
                   <Input
                     label="Phone Number"
                     type="tel"
-                    placeholder="+91 98765 43210"
+                    placeholder="+919876543210"
                     error={errors.contactPhone?.message}
                     {...register('contactPhone')}
                   />
