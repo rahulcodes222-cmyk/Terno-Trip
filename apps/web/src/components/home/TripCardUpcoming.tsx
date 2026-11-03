@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 import type { ITrip } from '@/types';
@@ -22,6 +22,16 @@ export default function TripCardUpcoming({ trip, variant }: Props) {
   const badgeText  = variant === 'upcoming'
     ? `UPCOMING · ${monthYear}`
     : `COMPLETED · ${monthYear}`;
+    // Prepare images array for slideshow (fallback to coverImage)
+    const images = trip.images && trip.images.length ? trip.images : [trip.coverImage];
+    const [currentIdx, setCurrentIdx] = useState(0);
+    useEffect(() => {
+      if (images.length <= 1) return;
+      const interval = setInterval(() => {
+        setCurrentIdx((prev) => (prev + 1) % images.length);
+      }, 1000);
+      return () => clearInterval(interval);
+    }, [images]);
 
   return (
     <Link

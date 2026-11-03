@@ -19,6 +19,9 @@ const envSchema = z.object({
   SMTP_FROM: z.string().optional().default(""),
   ADMIN_EMAIL: z.string().optional().default(""),
   FRONTEND_URL: z.string().url().optional().default("http://localhost:3000"),
+  // ─── Brand ─────────────────────────────────────────────────────────────────
+  SITE_NAME: z.string().optional().default("TernoTrip"),
+  LOGO_URL: z.string().optional().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);

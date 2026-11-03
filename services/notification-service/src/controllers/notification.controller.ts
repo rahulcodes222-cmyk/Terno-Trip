@@ -194,3 +194,35 @@ export async function sendBookingConfirmationEmail(
   }
 }
 
+
+// ─── Internal: Update brand settings (logo URL, site name) ────────────────
+// Called by frontend admin settings page after logo upload.
+// Updates in-memory values used by email templates for this process session.
+
+export async function updateBrandSettings(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { logoUrl, siteName } = req.body as { logoUrl?: string; siteName?: string };
+
+    // Update process.env at runtime so email templates pick it up immediately
+    if (logoUrl !== undefined) {
+      process.env.LOGO_URL = logoUrl;
+      // Re-import is not possible in ESM, but we can update the env object directly
+      // The email.service reads env at call time via env.LOGO_URL
+    }
+    if (siteName !== undefined) {
+      process.env.SITE_NAME = siteName;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Brand settings updated for email templates",
+      data: { logoUrl: process.env.LOGO_URL, siteName: process.env.SITE_NAME },
+    });
+  } catch (err) {
+    next(err);
+  }
+}

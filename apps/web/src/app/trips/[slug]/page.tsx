@@ -223,11 +223,15 @@ export default function TripDetailPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="">Select a date</option>
-                  {(trip.startDates ?? []).map((d) => (
-                    <option key={d} value={d}>
-                      {formatDate(d)}
-                    </option>
-                  ))}
+                  {(trip.startDates ?? []).map((d) => {
+                    const seatsForDate = getSeatsForDate(d);
+                    const isSoldOutDate = seatsForDate === 0;
+                    return (
+                      <option key={d} value={d} disabled={isSoldOutDate}>
+                        {formatDate(d)} {isSoldOutDate ? '— Sold out' : `(${seatsForDate} seats)`}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

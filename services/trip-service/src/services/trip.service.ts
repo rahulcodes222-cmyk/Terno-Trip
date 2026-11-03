@@ -181,6 +181,13 @@ export async function incrementSeats(
 export async function createTrip(
   data: Partial<ITripDocument>
 ): Promise<ITripDocument> {
+  // Populate seatsByStartDate if startDates are provided
+  if (data.startDates && data.startDates.length > 0 && data.availableSeats !== undefined) {
+    data.seatsByStartDate = data.startDates.map((date) => ({
+      startDate: new Date(date),
+      availableSeats: data.availableSeats as number,
+    }));
+  }
   const trip = new Trip(data);
   await trip.save();
   return trip;
@@ -191,6 +198,17 @@ export async function updateTrip(
   data: Partial<ITripDocument>
 ): Promise<ITripDocument | null> {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
+  
+  // Recalculate seatsByStartDate if startDates or availableSeats is being updated
+  if ((data.startDates || data.availableSeats !== undefined) && data.startDates?.length) {
+    const existingTrip = await Trip.findById(id);
+    const availableSeats = data.availableSeats !== undefined ? data.availableSeats : existingTrip?.availableSeats ?? 0;
+    data.seatsByStartDate = data.startDates.map((date) => ({
+      startDate: new Date(date),
+      availableSeats,
+    }));
+  }
+  
   return Trip.findByIdAndUpdate(id, data, { new: true, runValidators: true }).lean() as Promise<ITripDocument | null>;
 }
 

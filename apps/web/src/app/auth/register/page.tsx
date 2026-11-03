@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getBookingIntent, clearBookingIntent } from '@/lib/session-storage';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import SiteLogo from '@/components/ui/SiteLogo';
 
 const registerSchema = z
   .object({
@@ -62,10 +63,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen">
       {/* Left — branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-[#0A0A0A] px-12">
-        <Link href="/" className="mb-12 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF6B00] text-white font-bold">T</div>
-          <span className="text-2xl font-bold text-white">TernoTrip</span>
-        </Link>
+        <SiteLogo size="lg" dark linked={true} className="mb-12" />
         <h2 className="mb-4 text-4xl font-extrabold text-white leading-tight">
           Start your India<br />
           <span className="text-[#FF6B00]">Journey today</span>
@@ -84,10 +82,7 @@ export default function RegisterPage() {
 
       {/* Right — form */}
       <div className="flex w-full flex-col items-center justify-center bg-white px-6 py-12 lg:w-1/2">
-        <Link href="/" className="mb-6 flex items-center gap-2 lg:hidden">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FF6B00] text-white font-bold text-sm">T</div>
-          <span className="text-xl font-bold text-gray-900">TernoTrip</span>
-        </Link>
+        <SiteLogo size="md" linked={true} className="mb-6 lg:hidden" />
 
         <div className="w-full max-w-md">
           <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Create account</h1>

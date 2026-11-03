@@ -29,9 +29,16 @@ function createTransporter() {
 // ─── Shared Styles ────────────────────────────────────────────────────────────
 
 const brandColor = "#FF6B00";
-const brandName = "TernoTrip";
+const brandName = env.SITE_NAME || "TernoTrip";
+const logoUrl   = env.LOGO_URL  || "";
+const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
 
 function baseTemplate(content: string): string {
+  // Logo: use img tag if LOGO_URL set, else text fallback
+  const logoBlock = logoUrl
+    ? `<img src="${logoUrl}" alt="${brandName}" style="max-height:56px;max-width:180px;object-fit:contain;display:block;margin:0 auto 8px;" />`
+    : `<h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">✈ ${brandName}</h1>`;
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -47,11 +54,9 @@ function baseTemplate(content: string): string {
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#FF6B00 0%,#FF8C00 100%);border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-              <h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
-                ✈ ${brandName}
-              </h1>
-              <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">Your travel companion</p>
+            <td style="background:linear-gradient(135deg,#FF6B00 0%,#FF8C00 100%);border-radius:16px 16px 0 0;padding:28px 40px;text-align:center;">
+              ${logoBlock}
+              <p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">Your travel companion</p>
             </td>
           </tr>
           <!-- Body -->
@@ -141,7 +146,7 @@ function bookingConfirmationUserHtml(data: BookingEmailData): string {
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
       <tr>
         <td align="center">
-          <a href="${env.FRONTEND_URL ?? "http://localhost:3000"}/bookings/${data.bookingRef}"
+          <a href="${frontendUrl}/bookings/${data.bookingRef}"
              style="display:inline-block;background:${brandColor};color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:50px;">
             View My Booking →
           </a>

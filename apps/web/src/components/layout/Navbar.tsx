@@ -7,8 +7,10 @@ import { Bell, Menu, X, User, LogOut, Briefcase, ChevronDown, LayoutDashboard } 
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadCount } from '@/hooks/useNotifications';
+import SiteLogo from '@/components/ui/SiteLogo';
 
 const NAV_LINKS = [
+  { href: '/',               label: 'Home' },
   { href: '/#upcoming',     label: 'Upcoming Trips' },
   { href: '/#destinations', label: 'Destinations' },
   { href: '/#completed',    label: 'Completed' },
@@ -16,26 +18,9 @@ const NAV_LINKS = [
   { href: '/#blog',         label: 'Blog' },
 ];
 
-/* ── Logo component ─────────────────────────────────────────────────────── */
+/* ── Logo component — uses SiteLogo for consistency ──────────────────────── */
 function TernoLogo() {
-  return (
-    <Link href="/" className="flex items-center gap-0 shrink-0">
-      {/* Bird SVG — no box, no border, just the bird floating freely like demo */}
-      <img
-        src="/images/logo.jpeg"
-        alt="TernoTrip"
-        width={52}
-        height={44}
-        className="object-contain"
-        style={{ display: 'block' }}
-      />
-      {/* "Terno" navy + "Trip" orange — tight to the bird */}
-      <span className="text-xl font-extrabold leading-none tracking-tight -ml-1">
-        <span style={{ color: '#1B2E6B' }}>Terno</span>
-        <span style={{ color: '#FF4500' }}>Trip</span>
-      </span>
-    </Link>
-  );
+  return <SiteLogo size="md" />;
 }
 
 export default function Navbar() {

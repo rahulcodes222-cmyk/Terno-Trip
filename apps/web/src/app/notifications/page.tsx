@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
@@ -26,6 +27,7 @@ export default function NotificationsPage() {
 }
 
 function NotificationsContent() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, isLoading } = useNotifications(page);
   const markRead = useMarkRead();
@@ -34,6 +36,19 @@ function NotificationsContent() {
   const notifications = data?.data ?? [];
   const pagination = data?.pagination;
   const hasUnread = notifications.some((n) => !n.read);
+
+  const handleNotificationClick = (notification: typeof notifications[0]) => {
+    // Mark as read if not already
+    if (!notification.read) {
+      markRead.mutate(notification._id);
+    }
+    // Navigate based on notification type
+    if (notification.type === 'booking' || notification.type === 'payment') {
+      router.push('/bookings');
+    } else {
+      router.push('/bookings');
+    }
+  };
 
   return (
     <PageLayout>
@@ -61,7 +76,7 @@ function NotificationsContent() {
             {notifications.map((n) => (
               <button
                 key={n._id}
-                onClick={() => !n.read && markRead.mutate(n._id)}
+                onClick={() => handleNotificationClick(n)}
                 className={`w-full rounded-2xl border p-4 text-left transition-colors ${
                   n.read
                     ? 'border-gray-100 bg-white'

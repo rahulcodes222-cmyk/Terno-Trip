@@ -23,9 +23,11 @@ export async function adminGetTripById(id: string): Promise<ITrip> {
 export async function adminGetAllBookings(params: {
   page: number;
   limit: number;
+  status?: string;
+  search?: string;
 }): Promise<PaginatedResponse<IBooking>> {
   const res = await apiClient.get<PaginatedResponse<IBooking>>(
-    '/api/v1/bookings/admin',
+    '/api/v1/admin/bookings',
     { params }
   );
   return res.data;

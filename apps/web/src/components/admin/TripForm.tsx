@@ -8,13 +8,22 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import ItineraryEditor from './ItineraryEditor';
 import apiClient from '@/lib/api-client';
-import type { ITrip } from '@/types';
+import type { ITrip, ITripItineraryDay } from '@/types';
 
 // ─── Master type ──────────────────────────────────────────────────────────────
 interface IMaster { _id: string; name: string; email: string; }
 
 // ─── Zod schema ───────────────────────────────────────────────────────────────
+const itineraryDaySchema = z.object({
+  day: z.number().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  activities: z.array(z.string()),
+  accommodation: z.string().optional(),
+});
+
 const tripFormSchema = z.object({
   // ... existing fields ...
 
@@ -38,6 +47,7 @@ const tripFormSchema = z.object({
   inclusions:         z.string(),
   exclusions:         z.string(),
   highlights:         z.string(),
+  itinerary:          z.array(itineraryDaySchema).optional().default([]),
   accommodationType:  z.string().min(1, 'Required'),
   cancellationPolicy: z.string().min(5, 'Required'),
   masterId:           z.string().optional().or(z.literal('')),
@@ -53,7 +63,7 @@ const tripFormSchema = z.object({
   ),
 });
 
-export type TripFormData = z.infer<typeof tripFormSchema>;
+export type TripFormData = z.infer<typeof tripFormSchema> & { itinerary: ITripItineraryDay[] };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface TripFormProps {
@@ -238,6 +248,7 @@ export default function TripForm({
       inclusions:        arrToLines(defaultValues?.inclusions),
       exclusions:        arrToLines(defaultValues?.exclusions),
       highlights:        arrToLines(defaultValues?.highlights),
+      itinerary:         defaultValues?.itinerary         ?? [],
       cancellationPolicy:defaultValues?.cancellationPolicy ?? '',
       accommodationType: (defaultValues as Record<string,unknown>)?.accommodationType as string ?? 'Hotel',
       masterId:          defaultValues?.masterId           ?? '',
@@ -270,6 +281,7 @@ export default function TripForm({
     setValue('inclusions',        arrToLines(defaultValues.inclusions));
     setValue('exclusions',        arrToLines(defaultValues.exclusions));
     setValue('highlights',        arrToLines(defaultValues.highlights));
+    setValue('itinerary',         defaultValues.itinerary         ?? []);
     setValue('cancellationPolicy',defaultValues.cancellationPolicy ?? '');
     setValue('accommodationType', (defaultValues as Record<string,unknown>)?.accommodationType as string ?? 'Hotel');
     setValue('masterId',          defaultValues.masterId          ?? '');
@@ -294,7 +306,7 @@ export default function TripForm({
     const images      = data.images?.split('\n').map(s=>s.trim()).filter(Boolean);
     const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
-    await onSubmit({ ...data, slug, inclusions, exclusions, highlights, startDates, images });
+    await onSubmit({ ...data, slug, inclusions, exclusions, highlights, startDates, images, itinerary: data.itinerary });
   };
 
 
@@ -399,7 +411,11 @@ export default function TripForm({
         <p className="mt-1 text-xs text-gray-400">One item per line. Example: Day 3 (16 Nov, 2:30 PM) — Trek to Kedarnath</p>
       </div>
 
-      {/* ── Inclusions ───────────────────────────────────────────────── */}
+      {/* ── Itinerary Editor ─────────────────────────────────────────── */}
+      <ItineraryEditor
+        defaultDays={defaultValues?.itinerary ?? []}
+        onChange={(days) => setValue('itinerary', days)}
+      />
       <div>
         <label className={labelClass}>Inclusions</label>
         <textarea className={textareaClass} placeholder="One inclusion per line..." {...register('inclusions')} />

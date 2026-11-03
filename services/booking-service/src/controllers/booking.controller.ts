@@ -226,3 +226,27 @@ export async function internalGetBookingByRef(
   }
 }
 
+
+// ─── Admin: Get ALL bookings from ALL users ───────────────────────────────────
+// Requires x-user-role: admin (checked by adminAuth middleware)
+
+export async function getAllBookingsAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const page  = Number(req.query.page)   || 1;
+    const limit = Number(req.query.limit)  || 20;
+    const status = req.query.status as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const { bookings, total } = await bookingService.getAllBookings(page, limit, status, search);
+
+    res.status(200).json(
+      createPaginatedResponse(bookings, page, limit, total, "All bookings fetched")
+    );
+  } catch (err) {
+    next(err);
+  }
+}

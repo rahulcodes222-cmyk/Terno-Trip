@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import SiteLogo from '@/components/ui/SiteLogo';
 
 export default function Footer() {
-  const [email, setEmail]       = useState('');
+  const [email, setEmail]         = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubscribe = (e: React.FormEvent) => {
@@ -56,15 +57,7 @@ export default function Footer() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             {/* Brand */}
             <div className="col-span-2 sm:col-span-1">
-              <Link href="/" className="mb-3 flex items-center gap-1.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 p-1 overflow-hidden">
-                  <img src="/images/logo.svg" alt="TernoTrip" className="h-full w-full object-contain" />
-                </div>
-                <span className="text-lg font-extrabold">
-                  <span className="text-white">Terno</span>
-                  <span style={{ color: '#FF4500' }}>Trip</span>
-                </span>
-              </Link>
+              <SiteLogo size="sm" dark className="mb-3" />
               <p className="text-sm text-gray-500 leading-relaxed">
                 India&apos;s favourite small-group tour company. Authentic, curated, unforgettable.
               </p>
@@ -98,8 +91,8 @@ export default function Footer() {
               <ul className="space-y-2 text-sm text-gray-500">
                 <li><span className="cursor-default">Help Centre</span></li>
                 <li><span className="cursor-default">Cancellation Policy</span></li>
-                <li><span className="cursor-default">Terms of Service</span></li>
-                <li><span className="cursor-default">Privacy Policy</span></li>
+                <li><Link href="/terms" className="hover:text-[#FF6B00]">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="hover:text-[#FF6B00]">Privacy Policy</Link></li>
               </ul>
             </div>
           </div>

@@ -8,6 +8,7 @@ import {
   markAllRead,
   internalCreateNotification,
   sendBookingConfirmationEmail,
+  updateBrandSettings,
 } from "../controllers/notification.controller.js";
 
 const router = Router();
@@ -26,6 +27,9 @@ router.post("/api/v1/internal/notifications", serviceAuth, internalCreateNotific
 
 // ─── Booking Confirmation Email (called by payment-service after payment) ──────
 router.post("/api/v1/internal/notifications/booking-email", serviceAuth, sendBookingConfirmationEmail);
+
+// ─── Brand Settings (update logo/name used in email templates) ────────────────
+router.post("/api/v1/internal/notifications/brand", serviceAuth, updateBrandSettings);
 
 export default router;
 

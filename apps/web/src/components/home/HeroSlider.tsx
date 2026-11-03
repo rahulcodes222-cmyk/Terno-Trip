@@ -2,8 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Phone, User, Mail, ChevronDown, CheckCircle } from 'lucide-react';
 
-/* ── Slide data ─────────────────────────────────────────────────────────── */
 const SLIDES = [
   {
     video:  'https://videos.pexels.com/video-files/3571264/3571264-uhd_2560_1440_30fps.mp4',
@@ -28,17 +28,25 @@ const SLIDES = [
   },
 ];
 
+const DESTINATIONS = ['Manali', 'Goa', 'Rajasthan', 'Kerala', 'Ladakh', 'Andaman', 'Meghalaya', 'Rishikesh', 'Other'];
+
 export default function HeroSlider() {
   const [current, setCurrent] = useState(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  /* Auto-advance every 6s */
+  // Enquiry form state
+  const [enquiryName, setEnquiryName]         = useState('');
+  const [enquiryPhone, setEnquiryPhone]       = useState('');
+  const [enquiryEmail, setEnquiryEmail]       = useState('');
+  const [enquiryDest, setEnquiryDest]         = useState('');
+  const [enquirySubmitted, setEnquirySubmitted] = useState(false);
+  const [enquiryLoading, setEnquiryLoading]   = useState(false);
+
   useEffect(() => {
     const t = setInterval(() => setCurrent((p) => (p + 1) % SLIDES.length), 6000);
     return () => clearInterval(t);
   }, []);
 
-  /* Play active video, pause others */
   useEffect(() => {
     videoRefs.current.forEach((v, i) => {
       if (!v) return;
@@ -47,103 +55,145 @@ export default function HeroSlider() {
     });
   }, [current]);
 
+  const handleEnquiry = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enquiryName.trim() || !enquiryPhone.trim()) return;
+    setEnquiryLoading(true);
+    // Simulate submission (no API yet — store locally)
+    setTimeout(() => {
+      setEnquiryLoading(false);
+      setEnquirySubmitted(true);
+      // Reset after 4s
+      setTimeout(() => {
+        setEnquirySubmitted(false);
+        setEnquiryName(''); setEnquiryPhone('');
+        setEnquiryEmail(''); setEnquiryDest('');
+      }, 4000);
+    }, 800);
+  };
+
   return (
-    /*
-     * Outer wrapper — light gray page bg, horizontal padding to create the
-     * "card with margins on sides" look exactly like the screenshot.
-     */
     <section className="bg-[#F5F7FA] px-4 pb-6 pt-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-container">
-        {/*
-         * Inner dark card — rounded corners, overflow hidden, exact like screenshot.
-         * Height ~420px on desktop, auto on mobile.
-         */}
-        <div
-          className="relative overflow-hidden rounded-2xl"
-          style={{ height: '420px' }}
-        >
-          {/* ── Slides ───────────────────────────────────────── */}
+        <div className="relative overflow-hidden rounded-2xl" style={{ minHeight: '420px' }}>
+
+          {/* ── Video slides ──────────────────────────────────────── */}
           {SLIDES.map((slide, idx) => (
-            <div
-              key={idx}
-              className="absolute inset-0 transition-opacity duration-1000"
-              style={{ opacity: idx === current ? 1 : 0, zIndex: idx === current ? 1 : 0 }}
-            >
-              <video
-                ref={(el) => { videoRefs.current[idx] = el; }}
-                src={slide.video}
-                poster={slide.poster}
-                muted loop playsInline
-                preload={idx === 0 ? 'auto' : 'none'}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              {/* Dark overlay — navy/dark from the screenshot */}
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(10,20,40,0.85) 0%, rgba(10,20,40,0.5) 60%, rgba(0,0,0,0.15) 100%)' }} />
+            <div key={idx} className="absolute inset-0 transition-opacity duration-1000"
+              style={{ opacity: idx === current ? 1 : 0, zIndex: idx === current ? 1 : 0 }}>
+              <video ref={(el) => { videoRefs.current[idx] = el; }}
+                src={slide.video} poster={slide.poster}
+                muted loop playsInline preload={idx === 0 ? 'auto' : 'none'}
+                className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(10,20,40,0.88) 0%, rgba(10,20,40,0.55) 55%, rgba(0,0,0,0.2) 100%)' }} />
             </div>
           ))}
 
-          {/* ── Foreground content ───────────────────────────── */}
-          <div className="relative flex h-full flex-col justify-center px-8 pb-10 pt-6 sm:px-10 lg:px-14" style={{ zIndex: 10 }}>
+          {/* ── Foreground ────────────────────────────────────────── */}
+          <div className="relative flex h-full min-h-[420px] flex-col justify-center px-6 pb-12 pt-6 sm:px-10 lg:px-12" style={{ zIndex: 10 }}>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 
-            {/* "INDIA DOMESTIC TOURS ONLY" pill — exact from screenshot */}
-            <div className="mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white backdrop-blur-sm">
-              🚌 India Domestic Tours Only
+              {/* Left: text + CTAs */}
+              <div className="flex-1 max-w-lg">
+                <div className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white backdrop-blur-sm">
+                  🚌 India Domestic Tours Only
+                </div>
+                <h1 className="mb-3 text-3xl font-extrabold leading-tight text-white sm:text-4xl lg:text-5xl">
+                  {SLIDES[current].line1}{' '}
+                  <br />
+                  <span style={{ color: '#FF8C00' }}>{SLIDES[current].line2}</span>
+                </h1>
+                <p className="mb-5 max-w-md text-sm leading-relaxed text-gray-300 sm:text-base">
+                  {SLIDES[current].sub}
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link href="/trips"
+                    className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-colors"
+                    style={{ backgroundColor: '#FF6B00' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#E65100')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FF6B00')}>
+                    🚌 Explore Packages
+                  </Link>
+                  <a href="#enquiry"
+                    className="flex items-center gap-2 rounded-lg border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20">
+                    Quick Enquiry ↓
+                  </a>
+                </div>
+              </div>
+
+              {/* Right: Enquiry form card */}
+              <div id="enquiry" className="w-full lg:w-80 xl:w-96 shrink-0">
+                <div className="rounded-2xl bg-white/95 p-5 shadow-2xl backdrop-blur-md">
+                  {enquirySubmitted ? (
+                    <div className="flex flex-col items-center py-4 text-center">
+                      <CheckCircle className="mb-3 h-12 w-12 text-green-500" />
+                      <h3 className="font-bold text-gray-900">Enquiry Received!</h3>
+                      <p className="mt-1 text-sm text-gray-500">Our team will call you within 24 hours.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="mb-1 text-base font-bold text-gray-900">Quick Enquiry</h3>
+                      <p className="mb-4 text-xs text-gray-500">Get a free callback from our travel expert</p>
+
+                      <form onSubmit={handleEnquiry} className="space-y-3">
+                        {/* Name */}
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]">
+                          <User className="h-4 w-4 shrink-0 text-gray-400" />
+                          <input type="text" placeholder="Your Name *" value={enquiryName}
+                            onChange={(e) => setEnquiryName(e.target.value)}
+                            required className="w-full bg-transparent text-sm focus:outline-none" />
+                        </div>
+
+                        {/* Phone */}
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]">
+                          <Phone className="h-4 w-4 shrink-0 text-gray-400" />
+                          <input type="tel" placeholder="Phone Number *" value={enquiryPhone}
+                            onChange={(e) => setEnquiryPhone(e.target.value)}
+                            required className="w-full bg-transparent text-sm focus:outline-none" />
+                        </div>
+
+                        {/* Email */}
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]">
+                          <Mail className="h-4 w-4 shrink-0 text-gray-400" />
+                          <input type="email" placeholder="Email (optional)" value={enquiryEmail}
+                            onChange={(e) => setEnquiryEmail(e.target.value)}
+                            className="w-full bg-transparent text-sm focus:outline-none" />
+                        </div>
+
+                        {/* Destination */}
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]">
+                          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+                          <select value={enquiryDest} onChange={(e) => setEnquiryDest(e.target.value)}
+                            className="w-full bg-transparent text-sm text-gray-600 focus:outline-none">
+                            <option value="">Select Destination</option>
+                            {DESTINATIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                        </div>
+
+                        <button type="submit" disabled={enquiryLoading}
+                          className="w-full rounded-lg py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-70"
+                          style={{ backgroundColor: '#FF6B00' }}>
+                          {enquiryLoading ? 'Submitting...' : '📞 Request Free Callback'}
+                        </button>
+                      </form>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
+          </div>
 
-            {/* Headline — line1 white, line2 orange exactly like screenshot */}
-            <h1 className="mb-3 text-3xl font-extrabold leading-tight text-white sm:text-4xl lg:text-5xl">
-              {SLIDES[current].line1}{' '}
-              <br />
-              <span style={{ color: '#FF8C00' }}>{SLIDES[current].line2}</span>
-            </h1>
-
-            {/* Subtext */}
-            <p className="mb-6 max-w-md text-sm leading-relaxed text-gray-300 sm:text-base">
-              {SLIDES[current].sub}
-            </p>
-
-            {/* Two CTA buttons — exact like screenshot */}
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Primary: orange filled — "Explore Packages" */}
-              <Link
-                href="/trips"
-                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-colors"
-                style={{ backgroundColor: '#FF6B00' }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#E65100')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FF6B00')}
-              >
-                🚌 Explore Packages
-              </Link>
-              {/* Secondary: outline white — "Talk to an Expert" */}
-              <Link
-                href="/trips"
-                className="flex items-center gap-2 rounded-lg border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-              >
-                Talk to an Expert ↗
-              </Link>
-            </div>
-
-            {/* Dot indicators — bottom left */}
-            <div className="absolute bottom-5 left-8 flex items-center gap-2 sm:left-10 lg:left-14">
-              {SLIDES.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrent(idx)}
-                  aria-label={`Slide ${idx + 1}`}
-                  className="rounded-full transition-all duration-300"
-                  style={{
-                    height: '6px',
-                    width: idx === current ? '28px' : '6px',
-                    backgroundColor: idx === current ? '#FF6B00' : 'rgba(255,255,255,0.4)',
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Slide counter — bottom right */}
-            <div className="absolute bottom-5 right-6 text-xs font-semibold tracking-wide text-white/60">
-              {current + 1} / {SLIDES.length}
-            </div>
+          {/* Dot indicators */}
+          <div className="absolute bottom-4 left-8 z-20 flex items-center gap-2 sm:left-10 lg:left-12">
+            {SLIDES.map((_, idx) => (
+              <button key={idx} onClick={() => setCurrent(idx)} aria-label={`Slide ${idx + 1}`}
+                className="rounded-full transition-all duration-300"
+                style={{ height: '6px', width: idx === current ? '28px' : '6px',
+                  backgroundColor: idx === current ? '#FF6B00' : 'rgba(255,255,255,0.4)' }} />
+            ))}
+          </div>
+          <div className="absolute bottom-4 right-5 z-20 text-xs font-semibold tracking-wide text-white/60">
+            {current + 1} / {SLIDES.length}
           </div>
         </div>
       </div>

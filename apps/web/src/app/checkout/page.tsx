@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +16,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useTrip } from '@/hooks/useTrips';
 import { useCreateBooking } from '@/hooks/useBookings';
 import { useAuth } from '@/contexts/AuthContext';
+import { getSiteSettings } from '@/lib/site-settings';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 const travellerSchema = z.object({
@@ -55,16 +56,29 @@ function CheckoutContent() {
 
   const { data: trip, isLoading } = useTrip(tripSlug);
   const createBooking = useCreateBooking();
+  const siteSettings = getSiteSettings();
+  const cancellationPolicy = siteSettings.cancellationPolicy;
 
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [createdBookingRef, setCreatedBookingRef] = useState('');
   const [createdAmount, setCreatedAmount] = useState(0);
   const [bookingError, setBookingError] = useState('');
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+
+  // Sync site settings when they change
+  useEffect(() => {
+    const handler = () => {
+      // Component will re-render on settings update
+    };
+    window.addEventListener('site-settings-updated', handler);
+    return () => window.removeEventListener('site-settings-updated', handler);
+  }, []);
 
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutForm>({
@@ -231,17 +245,32 @@ function CheckoutContent() {
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                   <div>
                     <p className="mb-2 text-sm font-medium text-amber-800">Cancellation Policy</p>
-                    <p className="text-xs text-amber-700">{trip.cancellationPolicy}</p>
-                    <label className="mt-3 flex items-start gap-2 cursor-pointer text-sm">
+                    <p className="text-xs text-amber-700">{cancellationPolicy}</p>
+                    <div className="mt-3 flex items-start gap-2">
                       <input
                         type="checkbox"
-                        className="mt-0.5 accent-[#FF6B00]"
+                        id="policyCheckbox"
+                        className="mt-0.5 accent-[#FF6B00] cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPolicyModalOpen(true);
+                        }}
                         {...register('agreePolicy')}
                       />
-                      <span className="text-amber-800">
-                        I have read and agree to the cancellation policy
-                      </span>
-                    </label>
+                      <label htmlFor="policyCheckbox" className="flex-1 cursor-pointer text-sm text-amber-800">
+                        I have read and agree to the{' '}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPolicyModalOpen(true);
+                          }}
+                          className="font-semibold underline hover:text-amber-900"
+                        >
+                          cancellation policy
+                        </button>
+                      </label>
+                    </div>
                     {errors.agreePolicy && (
                       <p className="mt-1 text-xs text-red-600">{errors.agreePolicy.message}</p>
                     )}
@@ -306,6 +335,55 @@ function CheckoutContent() {
           tripTitle={trip.title}
           amount={createdAmount}
         />
+      )}
+
+      {/* Cancellation Policy Fullscreen Modal */}
+      {policyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative flex w-full max-w-2xl flex-col rounded-2xl border border-gray-200 bg-white shadow-xl max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-lg font-bold text-gray-900">Cancellation Policy</h2>
+              <button
+                onClick={() => setPolicyModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
+                {trip.cancellationPolicy}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="flex-1"
+                onClick={() => setPolicyModalOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1"
+                onClick={() => {
+                  setValue('agreePolicy', true);
+                  setPolicyModalOpen(false);
+                }}
+              >
+                Accept & Continue
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </PageLayout>
   );
