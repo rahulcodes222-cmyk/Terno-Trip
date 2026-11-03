@@ -51,7 +51,7 @@ function CheckoutContent() {
   const { user } = useAuth();
   const tripSlug = searchParams.get('tripSlug') ?? '';
   const departureDate = searchParams.get('date') ?? '';
-  const travellersCount = Number(searchParams.get('travellers') ?? '1');
+  const travellersCount = Math.min(Math.max(1, Number(searchParams.get('travellers') ?? '1')), 12);
 
   const { data: trip, isLoading } = useTrip(tripSlug);
   const createBooking = useCreateBooking();

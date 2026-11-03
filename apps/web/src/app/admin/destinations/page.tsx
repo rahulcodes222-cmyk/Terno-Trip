@@ -100,7 +100,11 @@ export default function AdminDestinationsPage() {
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <MapPinned className="h-6 w-6 text-[#FF6B00]" /> Popular Destinations
           </h1>
-          <p className="mt-1 text-sm text-gray-500">Manage destinations shown on the homepage</p>
+              <p className="mt-1 text-sm text-gray-500">Manage destinations shown on the homepage</p>
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            ⚠️ Changes are saved to this browser only (localStorage). Other devices, other browsers,
+            and server-rendered pages will continue showing the default destinations.
+          </p>
         </div>
         <Button variant="primary" onClick={startNew} disabled={editingId !== null}>
           <Plus className="h-4 w-4" /> Add New
