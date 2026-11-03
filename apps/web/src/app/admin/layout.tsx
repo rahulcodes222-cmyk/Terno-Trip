@@ -3,16 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, MapPin, Briefcase, Bus, Home, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, MapPin, MapPinned, Briefcase, Bus, Home, LogOut, Menu, X, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import SiteLogo from '@/components/ui/SiteLogo';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/trips', label: 'Trips', icon: MapPin },
+  { href: '/admin/destinations', label: 'Destinations', icon: MapPinned },
   { href: '/admin/master',   label: 'Master Dashboard', icon: Bus         },
   { href: '/admin/bookings', label: 'Bookings',         icon: Briefcase   },
+  { href: '/admin/settings', label: 'Site Settings',     icon: Settings    },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -65,18 +68,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
       >
         {/* Logo */}
-        <div className="flex h-14 items-center gap-2 px-4 shrink-0">
-          <img
-            src="/images/logo.svg"
-            alt="TernoTrip"
-            width={40}
-            height={32}
-            className="object-contain"
-          />
-          <span className="text-lg font-extrabold leading-none tracking-tight">
-            <span className="text-white">Terno</span>
-            <span style={{ color: '#FF6B00' }}>Trip</span>
-          </span>
+        <div className="flex h-14 items-center px-4 shrink-0">
+          <SiteLogo size="sm" dark />
         </div>
 
         {/* Nav items — admins see all, masters see only Master Dashboard */}

@@ -81,7 +81,7 @@ function CheckoutContent() {
     },
   });
 
-  const { fields } = useFieldArray({ control, name: 'travellers' });
+  const { fields, append, remove } = useFieldArray({ control, name: 'travellers' });
 
   if (isLoading) return <PageLayout><LoadingSpinner fullPage /></PageLayout>;
   if (!trip) {
@@ -89,8 +89,8 @@ function CheckoutContent() {
   }
 
   const effectivePrice = trip.discountPrice ?? trip.pricePerPerson;
-  const taxes = Math.round(effectivePrice * travellersCount * 0.05);
-  const total = effectivePrice * travellersCount + taxes;
+  const taxes = Math.round(effectivePrice * fields.length * 0.05);
+  const total = effectivePrice * fields.length + taxes;
 
   const onSubmit = async (data: CheckoutForm) => {
     setBookingError('');
@@ -145,9 +145,20 @@ function CheckoutContent() {
                 </h2>
                 {fields.map((field, i) => (
                   <div key={field.id} className="mb-4 rounded-xl bg-gray-50 p-4">
-                    <p className="mb-3 text-sm font-medium text-gray-600">
-                      Traveller {i + 1}
-                    </p>
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-600">
+                        Traveller {i + 1} of {fields.length}
+                      </p>
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => remove(i)}
+                          className="text-xs font-medium text-red-500 hover:text-red-700"
+                        >
+                          ✕ Remove
+                        </button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <Input
                         label="First Name"
@@ -171,6 +182,15 @@ function CheckoutContent() {
                     </div>
                   </div>
                 ))}
+                {fields.length < 12 && (
+                  <button
+                    type="button"
+                    onClick={() => append({ firstName: '', lastName: '', age: undefined as unknown as number })}
+                    className="mt-2 flex items-center gap-1 text-sm font-semibold text-[#FF6B00] hover:text-[#e55f00]"
+                  >
+                    + Add Traveller
+                  </button>
+                )}
               </div>
 
               {/* Contact */}
@@ -254,14 +274,14 @@ function CheckoutContent() {
               <div className="mb-4 space-y-1 text-xs text-gray-500">
                 <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {trip.destination}</div>
                 <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> {trip.duration} Days</div>
-                <div className="flex items-center gap-1"><Users className="h-3 w-3" /> {travellersCount} Traveller{travellersCount > 1 ? 's' : ''}</div>
+                <div className="flex items-center gap-1"><Users className="h-3 w-3" /> {fields.length} Traveller{fields.length > 1 ? 's' : ''}</div>
                 <div>Departure: {formatDate(departureDate)}</div>
               </div>
 
               <div className="space-y-2 border-t pt-4 text-sm">
                 <div className="flex justify-between text-gray-600">
-                  <span>{formatCurrency(effectivePrice)} × {travellersCount}</span>
-                  <span>{formatCurrency(effectivePrice * travellersCount)}</span>
+                  <span>{formatCurrency(effectivePrice)} × {fields.length}</span>
+                  <span>{formatCurrency(effectivePrice * fields.length)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>GST (5%)</span>

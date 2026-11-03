@@ -41,6 +41,10 @@ export default function TripDetailPage() {
   const taxes = Math.round(effectivePrice * travellers * 0.05);
   const total = effectivePrice * travellers + taxes;
 
+  const seats = trip.availableSeats;
+  const isSoldOut: boolean = selectedDate !== '' && seats === 0;
+  const isLowStock: boolean = selectedDate !== '' && seats > 0 && seats <= 5;
+
   const handleBookNow = () => {
     if (!selectedDate) {
       alert('Please select a departure date');
@@ -166,9 +170,19 @@ export default function TripDetailPage() {
                   </div>
                 )}
                 <p className="text-xs text-gray-400">per person</p>
-                <p className="mt-1 text-xs text-green-600">
-                  {trip.availableSeats} seats available
-                </p>
+                {isSoldOut && (
+                  <p className="mt-1 text-xs font-semibold text-red-600">
+                    Sold out for this date — please select another date
+                  </p>
+                )}
+                {isLowStock && (
+                  <p className="mt-1 text-xs font-semibold text-orange-500">
+                    Only {seats} seat{seats !== 1 ? 's' : ''} left!
+                  </p>
+                )}
+                {!isSoldOut && !isLowStock && (
+                  <p className="mt-1 text-xs text-green-600">{seats} seats available</p>
+                )}
               </div>
 
               {/* Date Picker */}
@@ -231,8 +245,9 @@ export default function TripDetailPage() {
               <Button
                 variant="primary"
                 size="lg"
-                className="w-full"
+                className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleBookNow}
+                disabled={isSoldOut}
               >
                 Book Now
               </Button>
@@ -250,7 +265,7 @@ export default function TripDetailPage() {
               <div className="text-lg font-bold text-primary">{formatCurrency(total)}</div>
               <div className="text-xs text-gray-400">for {travellers} person{travellers !== 1 ? 's' : ''}</div>
             </div>
-            <Button variant="primary" size="lg" onClick={handleBookNow}>
+            <Button variant="primary" size="lg" onClick={handleBookNow} disabled={isSoldOut}>
               Book Now
             </Button>
           </div>
