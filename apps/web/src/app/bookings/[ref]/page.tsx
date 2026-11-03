@@ -13,6 +13,18 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useBooking, useCancelBooking } from '@/hooks/useBookings';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
+function formatCancelledDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const hour12 = date.getHours() % 12 === 0 ? 12 : date.getHours() % 12;
+  const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const year = date.getFullYear();
+  return `${String(hour12).padStart(2, '0')}:${minutes} ${ampm} on ${day} ${month} ${year}`;
+}
+
 export default function BookingDetailPage() {
   return (
     <ProtectedRoute>
@@ -67,6 +79,15 @@ function BookingDetailContent() {
           </div>
           <Badge status={booking.status} />
         </div>
+
+        {booking.status === 'Cancelled' && booking.cancelledAt && (
+          <div className="mb-6 rounded-xl border border-amber-100 bg-amber-50 p-4">
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">Cancelled at </span>
+              {formatCancelledDate(booking.cancelledAt)}
+            </p>
+          </div>
+        )}
 
         {/* Trip Image */}
         <div className="relative mb-6 h-48 overflow-hidden rounded-2xl">

@@ -41,9 +41,28 @@ export default function TripDetailPage() {
   const taxes = Math.round(effectivePrice * travellers * 0.05);
   const total = effectivePrice * travellers + taxes;
 
-  const seats = trip.availableSeats;
+  // Get available seats for selected date
+  const getSeatsForDate = (date: string): number => {
+    if (!date) return 0;
+    const byDateSeats = trip.seatsByStartDate?.find(
+      (s) => new Date(s.startDate).toISOString().split('T')[0] === new Date(date).toISOString().split('T')[0]
+    );
+    return byDateSeats ? byDateSeats.availableSeats : trip.availableSeats;
+  };
+
+  const seats = getSeatsForDate(selectedDate);
   const isSoldOut: boolean = selectedDate !== '' && seats === 0;
   const isLowStock: boolean = selectedDate !== '' && seats > 0 && seats <= 5;
+
+  // Format departure time
+  const formatDepartureTime = (time?: string): string => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
 
   const handleBookNow = () => {
     if (!selectedDate) {
@@ -170,6 +189,11 @@ export default function TripDetailPage() {
                   </div>
                 )}
                 <p className="text-xs text-gray-400">per person</p>
+                {trip.departureTime && (
+                  <p className="mt-2 text-xs text-gray-600">
+                    <Clock className="mr-1 inline h-3 w-3" /> Departs at {formatDepartureTime(trip.departureTime)}
+                  </p>
+                )}
                 {isSoldOut && (
                   <p className="mt-1 text-xs font-semibold text-red-600">
                     Sold out for this date — please select another date
@@ -180,8 +204,11 @@ export default function TripDetailPage() {
                     Only {seats} seat{seats !== 1 ? 's' : ''} left!
                   </p>
                 )}
-                {!isSoldOut && !isLowStock && (
+                {!isSoldOut && !isLowStock && selectedDate && (
                   <p className="mt-1 text-xs text-green-600">{seats} seats available</p>
+                )}
+                {!selectedDate && (
+                  <p className="mt-1 text-xs text-gray-400">Select a date to check availability</p>
                 )}
               </div>
 

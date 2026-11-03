@@ -157,8 +157,6 @@ export interface CreateBookingInput {
   specialRequests?: string;
 }
 
-import { env } from "../config/env.js";
-
 // Helper to notify notification‑service about a newly created booking
 async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void> {
   try {
@@ -238,7 +236,7 @@ export async function createBooking(
 
   // Send booking confirmation email (user + admin) – best‑effort, ignore failures
   await sendBookingCreatedEmail(booking);
-  console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}, admin: ${env.ADMIN_EMAIL}`);
+  console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}`);
 
   // 5. Notify user via HTTP (cross-process — in-memory EventEmitter won't work here)
   await notifyUser({
@@ -315,6 +313,7 @@ export async function cancelBooking(
 
   booking.status = "Cancelled";
   booking.cancellationReason = reason;
+  booking.cancelledAt = new Date();
   await booking.save();
 
   // Restore seats in trip-service via HTTP (cross-process)
@@ -359,4 +358,37 @@ export async function updateBookingPaymentStatus(
   }
 
   return Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean() as Promise<IBookingDocument | null>;
+}
+
+// ─── Admin: Get ALL bookings (all users) ─────────────────────────────────────
+
+export async function getAllBookings(
+  page = 1,
+  limit = 20,
+  status?: string,
+  search?: string
+): Promise<{ bookings: IBookingDocument[]; total: number }> {
+  const skip = (page - 1) * limit;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const query: Record<string, any> = {};
+
+  if (status && status !== "All") {
+    query.status = status;
+  }
+
+  if (search) {
+    query.$or = [
+      { bookingRef:   { $regex: search, $options: "i" } },
+      { contactEmail: { $regex: search, $options: "i" } },
+      { "tripSnapshot.title": { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const [bookings, total] = await Promise.all([
+    Booking.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Booking.countDocuments(query),
+  ]);
+
+  return { bookings: bookings as unknown as IBookingDocument[], total };
 }

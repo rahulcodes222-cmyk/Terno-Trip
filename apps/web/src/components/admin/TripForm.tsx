@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
+import { Plus, X } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import apiClient from '@/lib/api-client';
@@ -15,6 +16,8 @@ interface IMaster { _id: string; name: string; email: string; }
 
 // ─── Zod schema ───────────────────────────────────────────────────────────────
 const tripFormSchema = z.object({
+  // ... existing fields ...
+
   title:              z.string().min(3, 'Title must be at least 3 characters'),
   slug:               z.string().optional().or(z.literal('')),
   destination:        z.string().min(1, 'Destination is required'),
@@ -29,7 +32,9 @@ const tripFormSchema = z.object({
   discountPrice:      z.coerce.number().optional(),
   availableSeats:     z.coerce.number().min(0),
   difficulty:         z.enum(['Easy', 'Moderate', 'Challenging']),
+  departureTime:      z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format (24-hour)').default('06:00'),
   coverImage:         z.string().url('Must be a valid URL'),
+  images:           z.string().optional(),
   inclusions:         z.string(),
   exclusions:         z.string(),
   highlights:         z.string(),
@@ -70,6 +75,117 @@ const datesToCsv = (dates?: string[]) => {
     catch { return d; }
   }).join(', ');
 };
+
+// ─── ImageUrlManager ─────────────────────────────────────────────────────────
+// Lets admin paste one URL → click Add → see thumbnail preview → remove if needed
+
+interface ImageUrlManagerProps {
+  defaultImages?: string[];
+  onChange: (urls: string[]) => void;
+}
+
+function ImageUrlManager({ defaultImages = [], onChange }: ImageUrlManagerProps) {
+  const [urls, setUrls]     = useState<string[]>(defaultImages);
+  const [input, setInput]   = useState('');
+  const [error, setError]   = useState('');
+
+  // keep parent in sync
+  useEffect(() => { onChange(urls); }, [urls, onChange]);
+
+  // sync if defaultImages changes (edit page load)
+  useEffect(() => {
+    if (defaultImages.length && urls.length === 0) {
+      setUrls(defaultImages);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultImages.length]);
+
+  const handleAdd = () => {
+    const trimmed = input.trim();
+    if (!trimmed) { setError('Please enter a URL'); return; }
+    try { new URL(trimmed); } catch {
+      setError('Please enter a valid URL (starting with https://)'); return;
+    }
+    if (urls.includes(trimmed)) { setError('This URL is already added'); return; }
+    setUrls((prev) => [...prev, trimmed]);
+    setInput('');
+    setError('');
+  };
+
+  const handleRemove = (idx: number) => {
+    setUrls((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleAdd(); }
+  };
+
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">
+        Trip Images
+        <span className="ml-1 text-xs font-normal text-gray-400">(optional — shown in gallery)</span>
+      </label>
+
+      {/* URL input + Add button */}
+      <div className="flex gap-2">
+        <input
+          type="url"
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setError(''); }}
+          onKeyDown={handleKeyDown}
+          placeholder="https://images.unsplash.com/photo-xxx?w=800"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#FF6B00] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors"
+          style={{ backgroundColor: '#FF6B00' }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#E65100')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FF6B00')}
+        >
+          <Plus className="h-4 w-4" /> Add
+        </button>
+      </div>
+
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {!error && <p className="mt-1 text-xs text-gray-400">Paste a URL and click Add. Press Enter to add quickly.</p>}
+
+      {/* Added images list with thumbnails */}
+      {urls.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {urls.map((url, idx) => (
+            <div key={idx} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-2">
+              {/* Thumbnail */}
+              <img
+                src={url}
+                alt={`Image ${idx + 1}`}
+                className="h-14 w-20 shrink-0 rounded-lg object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/error/80/56'; }}
+              />
+              {/* URL text */}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-600">Image {idx + 1}</p>
+                <p className="truncate text-xs text-gray-400">{url}</p>
+              </div>
+              {/* Remove */}
+              <button
+                type="button"
+                onClick={() => handleRemove(idx)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                title="Remove image"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          <p className="text-xs text-gray-400">{urls.length} image{urls.length !== 1 ? 's' : ''} added</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function TripForm({
@@ -116,7 +232,9 @@ export default function TripForm({
       discountPrice:     defaultValues?.discountPrice,
       availableSeats:    defaultValues?.availableSeats    ?? 0,
       difficulty:        defaultValues?.difficulty        ?? 'Easy',
+      departureTime:     defaultValues?.departureTime     ?? '06:00',
       coverImage:        defaultValues?.coverImage        ?? '',
+      images:           arrToLines(defaultValues?.images),
       inclusions:        arrToLines(defaultValues?.inclusions),
       exclusions:        arrToLines(defaultValues?.exclusions),
       highlights:        arrToLines(defaultValues?.highlights),
@@ -146,7 +264,9 @@ export default function TripForm({
     setValue('discountPrice',     defaultValues.discountPrice);
     setValue('availableSeats',    defaultValues.availableSeats    ?? 0);
     setValue('difficulty',        defaultValues.difficulty        ?? 'Easy');
+    setValue('departureTime',     defaultValues.departureTime     ?? '06:00');
     setValue('coverImage',        defaultValues.coverImage        ?? '');
+    setValue('images',           arrToLines(defaultValues?.images));
     setValue('inclusions',        arrToLines(defaultValues.inclusions));
     setValue('exclusions',        arrToLines(defaultValues.exclusions));
     setValue('highlights',        arrToLines(defaultValues.highlights));
@@ -171,10 +291,12 @@ export default function TripForm({
     const exclusions  = data.exclusions.split('\n').map(s=>s.trim()).filter(Boolean);
     const highlights  = data.highlights.split('\n').map(s=>s.trim()).filter(Boolean);
     const startDates  = data.startDates.split(',').map(s=>s.trim()).filter(Boolean);
+    const images      = data.images?.split('\n').map(s=>s.trim()).filter(Boolean);
     const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
-    await onSubmit({ ...data, slug, inclusions, exclusions, highlights, startDates });
+    await onSubmit({ ...data, slug, inclusions, exclusions, highlights, startDates, images });
   };
+
 
   const textareaClass = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-transparent resize-y min-h-[80px]';
   const selectClass   = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-transparent';
@@ -238,6 +360,20 @@ export default function TripForm({
         <Input label="Discount Price (₹) — optional" type="number" min={0} error={errors.discountPrice?.message} {...register('discountPrice')} />
       </div>
 
+      {/* ── Departure Time ──────────────────────────────────────────── */}
+      <div>
+        <label className={labelClass}>
+          Departure Time
+          <span className="ml-1 text-xs font-normal text-gray-400">(24-hour format)</span>
+        </label>
+        <input
+          type="time"
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00] focus:border-transparent"
+          {...register('departureTime')}
+        />
+        {errors.departureTime && <p className="mt-1 text-xs text-red-600">{errors.departureTime.message}</p>}
+      </div>
+
       {/* ── Cover Image ──────────────────────────────────────────────── */}
       <Input label="Cover Image URL" type="url" placeholder="https://..." required
         error={errors.coverImage?.message} {...register('coverImage')} />
@@ -260,7 +396,7 @@ export default function TripForm({
       <div>
         <label className={labelClass}>Highlights</label>
         <textarea className={textareaClass} placeholder="One highlight per line..." {...register('highlights')} />
-        <p className="mt-1 text-xs text-gray-400">One item per line</p>
+        <p className="mt-1 text-xs text-gray-400">One item per line. Example: Day 3 (16 Nov, 2:30 PM) — Trek to Kedarnath</p>
       </div>
 
       {/* ── Inclusions ───────────────────────────────────────────────── */}
@@ -283,6 +419,11 @@ export default function TripForm({
         <textarea className={textareaClass} placeholder="Describe the cancellation/refund policy..." {...register('cancellationPolicy')} />
         {errors.cancellationPolicy && <p className="mt-1 text-xs text-red-600">{errors.cancellationPolicy.message}</p>}
       </div>
+      {/* ── Images (URL input + Add button + preview list) ────────── */}
+      <ImageUrlManager
+        defaultImages={defaultValues?.images ?? []}
+        onChange={(urls) => setValue('images', urls.join('\n'))}
+      />
 
       {/* ── Accommodation Type ───────────────────────────────────────── */}
       <Input label="Accommodation Type" placeholder="e.g. Hotel, Homestay, Tent, Resort" required

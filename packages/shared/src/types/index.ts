@@ -62,6 +62,8 @@ export interface ITrip {
   difficulty: TripDifficulty;
   startDates: Date[];
   availableSeats: number;
+  seatsByStartDate?: Array<{ startDate: Date; availableSeats: number }>;
+  departureTime?: string;
   ratingsAverage: number;
   ratingsQuantity: number;
   cancellationPolicy: string;
@@ -98,6 +100,7 @@ export interface IBooking {
   contactEmail: string;
   contactPhone: string;
   specialRequests?: string;
+  cancelledAt?: Date;
   createdAt: Date;
   updatedAt?: Date;
 }

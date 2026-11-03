@@ -11,6 +11,18 @@ interface BookingCardProps {
   onCancel?: (id: string) => void;
 }
 
+function formatCancelledDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const hour12 = date.getHours() % 12 === 0 ? 12 : date.getHours() % 12;
+  const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const year = date.getFullYear();
+  return `Cancelled at ${String(hour12).padStart(2, '0')}:${minutes} ${ampm} on ${day} ${month} ${year}`;
+}
+
 export default function BookingCard({ booking, onCancel }: BookingCardProps) {
   const canCancel = booking.status === 'Pending' || booking.status === 'Confirmed';
 
@@ -43,7 +55,10 @@ export default function BookingCard({ booking, onCancel }: BookingCardProps) {
               </div>
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatDate(booking.departureDate)}
+                {booking.status === 'Cancelled' && booking.cancelledAt
+                  ? formatCancelledDate(booking.cancelledAt)
+                  : formatDate(booking.departureDate)
+                }
               </div>
               <div className="flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5" />

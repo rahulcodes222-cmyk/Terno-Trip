@@ -39,6 +39,8 @@ export interface ITrip {
   difficulty: 'Easy' | 'Moderate' | 'Challenging';
   startDates: string[];
   availableSeats: number;
+  seatsByStartDate?: Array<{ startDate: string; availableSeats: number }>;
+  departureTime?: string;
   ratingsAverage: number;
   ratingsQuantity: number;
   cancellationPolicy: string;
@@ -78,6 +80,7 @@ export interface IBooking {
   paymentId?: string;
   createdAt: string;
   updatedAt: string;
+  cancelledAt?: string;
 }
 
 export interface INotification {

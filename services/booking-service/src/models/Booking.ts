@@ -34,6 +34,7 @@ export interface IBookingDocument extends Document {
   specialRequests?: string;
   paymentId?: string;
   cancellationReason?: string;
+  cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,6 +84,7 @@ const bookingSchema = new Schema<IBookingDocument>(
     specialRequests: { type: String, trim: true },
     paymentId: { type: String },
     cancellationReason: { type: String },
+    cancelledAt: { type: Date },
   },
   {
     timestamps: true,

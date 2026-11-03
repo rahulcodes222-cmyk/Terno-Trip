@@ -4,6 +4,8 @@ import type { ITrip, TripCategory, TripDifficulty, ITripItineraryDay } from "@te
 export interface ITripDocument extends Omit<ITrip, "_id">, Document {
   slug: string;
   coverImage: string;
+  seatsByStartDate?: Array<{ startDate: Date; availableSeats: number }>;
+  departureTime?: string;
 }
 
 const itineraryDaySchema = new Schema<ITripItineraryDay>(
@@ -51,6 +53,13 @@ const tripSchema = new Schema<ITripDocument>(
     },
     startDates: [{ type: Date }],
     availableSeats: { type: Number, required: true, min: 0 },
+    seatsByStartDate: [
+      {
+        startDate: { type: Date, required: true },
+        availableSeats: { type: Number, required: true, min: 0 },
+      }
+    ],
+    departureTime: { type: String, default: "06:00" },
     ratingsAverage: { type: Number, default: 4.5, min: 1, max: 5 },
     ratingsQuantity: { type: Number, default: 0, min: 0 },
     cancellationPolicy: { type: String, required: true },
