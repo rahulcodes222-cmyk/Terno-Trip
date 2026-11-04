@@ -1,0 +1,30 @@
+# SIMPLE DOCKERFILE - Use pre-built files
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy pre-built dist files (build them locally first)
+COPY packages/shared/dist ./packages/shared/dist/
+COPY packages/shared/package.json ./packages/shared/
+
+COPY services/shared-events/dist ./services/shared-events/dist/
+COPY services/shared-events/package.json ./services/shared-events/
+
+COPY services/booking-service/dist ./services/booking-service/dist/
+COPY services/booking-service/package.json ./services/booking-service/
+
+# Create package.json with file dependencies
+RUN cat > package.json << 'EOF'
+{
+  "dependencies": {
+    "@terno/shared": "file:./packages/shared",
+    "@terno/shared-events": "file:./services/shared-events"
+  }
+}
+EOF
+
+# Install dependencies
+RUN npm install --production
+
+EXPOSE 4004
+CMD ["node", "services/booking-service/dist/index.js"]
