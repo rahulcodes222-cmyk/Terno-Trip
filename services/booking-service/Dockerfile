@@ -1,5 +1,5 @@
-# WORKAROUND FOR WINDOWS DOCKER BUG
-# Create everything manually since Docker can't copy directories
+# SIMPLE DOCKERFILE THAT WILL WORK
+# Using cat with heredoc to avoid JSON parsing issues
 
 FROM node:20-alpine
 
@@ -10,28 +10,33 @@ RUN mkdir -p packages/shared/src
 RUN mkdir -p services/shared-events/src
 RUN mkdir -p services/booking-service/src
 
-# Create minimal package.json files
-RUN echo '{
+# Create package.json files using cat with heredoc
+RUN cat > packages/shared/package.json << 'EOF'
+{
   "name": "@terno/shared",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json"
   }
-}' > packages/shared/package.json
+}
+EOF
 
-RUN echo '{
-  "name": "@terno/shared-events", 
+RUN cat > services/shared-events/package.json << 'EOF'
+{
+  "name": "@terno/shared-events",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json"
   }
-}' > services/shared-events/package.json
+}
+EOF
 
-RUN echo '{
+RUN cat > services/booking-service/package.json << 'EOF'
+{
   "name": "@terno/booking-service",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc"
@@ -40,19 +45,23 @@ RUN echo '{
     "@terno/shared": "*",
     "@terno/shared-events": "*"
   }
-}' > services/booking-service/package.json
+}
+EOF
 
-# Create root package.json with workspaces
-RUN echo '{
+# Create root package.json
+RUN cat > package.json << 'EOF'
+{
   "workspaces": ["packages/*", "services/*"]
-}' > package.json
+}
+EOF
 
-# Create minimal TypeScript source files
+# Create source files
 RUN echo 'export const sharedConfig = { version: "1.0.0" };' > packages/shared/src/index.ts
 RUN echo 'export interface Event { type: string; data: any; }' > services/shared-events/src/index.ts
 
-# Create booking service code
-RUN echo 'import express from "express";
+# Create booking service
+RUN cat > services/booking-service/src/index.ts << 'EOF'
+import express from "express";
 import { sharedConfig } from "@terno/shared";
 import { Event } from "@terno/shared-events";
 
@@ -62,8 +71,8 @@ const PORT = process.env.PORT || 4004;
 app.use(express.json());
 
 app.get("/health", (req, res) => {
-  res.json({ 
-    status: "healthy", 
+  res.json({
+    status: "healthy",
     service: "booking",
     version: sharedConfig.version
   });
@@ -76,10 +85,11 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Booking service running on port ${PORT}`);
 });
-' > services/booking-service/src/index.ts
+EOF
 
 # Create tsconfig.json
-RUN echo '{
+RUN cat > tsconfig.json << 'EOF'
+{
   "compilerOptions": {
     "target": "ES2022",
     "module": "Node16",
@@ -90,22 +100,23 @@ RUN echo '{
     "outDir": "./dist",
     "rootDir": "./src"
   }
-}' > tsconfig.json
+}
+EOF
 
-# Copy same tsconfig to each directory
+# Copy tsconfig
 RUN cp tsconfig.json packages/shared/
 RUN cp tsconfig.json services/shared-events/
 RUN cp tsconfig.json services/booking-service/
 
-# Install TypeScript and dependencies
+# Install dependencies
 RUN npm install typescript @types/node express @types/express --save-dev
 
-# Build all packages
+# Build
 RUN cd packages/shared && npm run build
 RUN cd services/shared-events && npm run build
 RUN cd services/booking-service && npm run build
 
-# Install production dependencies for booking service
+# Install production deps
 WORKDIR /app/services/booking-service
 RUN npm install express
 
