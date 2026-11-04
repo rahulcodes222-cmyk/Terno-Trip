@@ -33,5 +33,5 @@ COPY --from=builder /app/services/shared-events ./services/shared-events
 COPY --from=builder /app/services/booking-service/dist ./services/booking-service/dist
 COPY --from=builder /app/services/booking-service/package.json ./services/booking-service/package.json
 
-EXPOSE 4008
+EXPOSE 4004
 CMD ["node", "services/booking-service/dist/index.js"]
