@@ -1,0 +1,15 @@
+# Minimal .dockerignore for booking service build
+# Only exclude truly unnecessary files
+
+.git
+.gitignore
+.agents
+node_modules
+dist
+*.log
+.DS_Store
+Thumbs.db
+
+# Keep all source files!
+# !packages/
+# !services/
