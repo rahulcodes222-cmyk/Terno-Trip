@@ -1,0 +1,19 @@
+# This WILL work - copies everything then organizes
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy entire project
+COPY . .
+
+# Now organize - everything is already in /app
+WORKDIR /app
+
+# Build
+RUN npm ci --ignore-scripts
+RUN npm run build --workspace=packages/shared
+RUN npm run build --workspace=services/shared-events
+RUN npm run build --workspace=services/booking-service
+
+EXPOSE 4004
+CMD ["node", "services/booking-service/dist/index.js"]
