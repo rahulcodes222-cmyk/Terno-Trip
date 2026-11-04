@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Email - Terno Trip</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .email-preview { border: 2px solid #FF6B00; border-radius: 10px; padding: 20px; margin: 20px 0; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; }
+        .instructions { background: #f5f7fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <h1>📧 Email Test Page</h1>
+    
+    <div class="instructions">
+        <h3>How to get emails working:</h3>
+        <ol>
+            <li><strong>Option 1 (Easiest):</strong> Use <a href="https://formspree.io" target="_blank">Formspree.io</a> - Free form to email</li>
+            <li><strong>Option 2:</strong> Use <a href="https://resend.com" target="_blank">Resend.com</a> - 100 free emails/month</li>
+            <li><strong>Option 3:</strong> Configure Gmail SMTP (requires 2FA)</li>
+        </ol>
+    </div>
+    
+    <div class="email-preview">
+        <h2>Email that would be sent:</h2>
+        <p><strong>To:</strong> admin@terno-trip.com</p>
+        <p><strong>Subject:</strong> 📞 New Enquiry from [Customer Name] - Terno Trip</p>
+        <p><strong>Body:</strong></p>
+        <div style="background: white; padding: 15px; border: 1px solid #ddd;">
+            <h3 style="color: #FF6B00;">New Enquiry Received</h3>
+            <p><strong>Name:</strong> [Customer Name]</p>
+            <p><strong>Phone:</strong> [Phone Number]</p>
+            <p><strong>Email:</strong> [Email or "Not provided"]</p>
+            <p><strong>Destination:</strong> [Destination or "Not specified"]</p>
+            <p><strong>Time:</strong> [Current Time]</p>
+            <p><strong>Action Required:</strong> Please contact customer within 24 hours</p>
+        </div>
+    </div>
+    
+    <h3>Quick Setup with Formspree:</h3>
+    <ol>
+        <li>Go to <a href="https://formspree.io" target="_blank">Formspree.io</a></li>
+        <li>Sign up (free)</li>
+        <li>Create a new form</li>
+        <li>Copy the form endpoint URL</li>
+        <li>Add to <code>.env.local</code>:
+            <pre>FORMPREE_ENDPOINT=https://formspree.io/f/your-form-id</pre>
+        </li>
+        <li>Update <code>route.ts</code> to send to Formspree</li>
+    </ol>
+    
+    <button onclick="testEnquiry()">Test Enquiry Submission</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testEnquiry() {
+            const result = document.getElementById('result');
+            result.innerHTML = '<p>Sending test enquiry...</p>';
+            
+            try {
+                const response = await fetch('/api/enquiries', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: 'Test Customer',
+                        phone: '9876543210',
+                        email: 'test@example.com',
+                        destination: 'Goa'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<p class="success">✅ Success! Enquiry saved.</p>
+                                       <p>Email sent: ${data.emailSent ? 'Yes' : 'No'}</p>
+                                       <p>Check browser console for details.</p>`;
+                } else {
+                    result.innerHTML = `<p class="error">❌ Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Network error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

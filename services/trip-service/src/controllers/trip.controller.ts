@@ -119,7 +119,7 @@ export async function decrementSeats(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { tripId, seats } = req.body as { tripId: string; seats: number };
+    const { tripId, seats, departureDate } = req.body as { tripId: string; seats: number; departureDate?: string };
 
     if (!tripId || seats === undefined) {
       res
@@ -128,7 +128,7 @@ export async function decrementSeats(
       return;
     }
 
-    const trip = await tripService.decrementSeats(tripId, seats);
+    const trip = await tripService.decrementSeats(tripId, seats, departureDate);
     if (!trip) {
       res
         .status(400)

@@ -167,7 +167,9 @@ async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void>
         "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
       },
       body: JSON.stringify({
-        userName: "Traveller",
+        userName: booking.travellers?.[0]?.firstName ? 
+          `${booking.travellers[0].firstName || ''} ${booking.travellers[0].lastName || ''}`.trim() : 
+          "Traveller",
         userEmail: booking.contactEmail,
         bookingRef: booking.bookingRef,
         tripTitle: booking.tripSnapshot?.title ?? "Trip",
@@ -357,7 +359,36 @@ export async function updateBookingPaymentStatus(
     update.paymentId = paymentId;
   }
 
-  return Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean() as Promise<IBookingDocument | null>;
+  const booking = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
+
+  // If payment was successful, decrement seats in trip-service
+  if (booking && paymentStatus === "Paid") {
+    try {
+      const bookingData = booking as unknown as IBookingDocument;
+      await fetch(
+        `${env.TRIP_SERVICE_URL}/api/v1/internal/trips/decrement-seats`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
+          },
+          body: JSON.stringify({
+            tripId: bookingData.tripId,
+            departureDate: bookingData.departureDate.toISOString(),
+            seats: bookingData.travellers.length,
+          }),
+          signal: AbortSignal.timeout(5000),
+        }
+      );
+      console.log(`[booking-service] Seats decremented for trip ${bookingData.tripId}`);
+    } catch (err) {
+      console.error("[booking-service] Failed to decrement seats:", err);
+      // Don't throw — booking is already confirmed, seats will eventually be deducted
+    }
+  }
+
+  return booking as unknown as IBookingDocument | null;
 }
 
 // ─── Admin: Get ALL bookings (all users) ─────────────────────────────────────

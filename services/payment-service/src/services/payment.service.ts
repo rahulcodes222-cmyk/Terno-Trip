@@ -164,11 +164,18 @@ export async function createOrder(
 
 // ─── Fetch Booking Details (for email) ───────────────────────────────────────
 
+interface TravellerDetails {
+  firstName: string;
+  lastName: string;
+  age: number;
+  passportNumber?: string;
+}
+
 interface BookingDetails {
   bookingRef: string;
   tripSnapshot: { title: string; destination: string };
   departureDate: string;
-  travellers: unknown[];
+  travellers: TravellerDetails[];
   totalAmount: number;
   contactEmail: string;
   userId: string;
@@ -232,7 +239,9 @@ export async function processPayment(
       if (bookingDetails) {
         notifications.push(
           sendBookingConfirmationEmail({
-            userName: "Traveller", // Will be enriched if user-service data available
+            userName: bookingDetails.travellers?.[0]?.firstName ? 
+              `${bookingDetails.travellers[0].firstName || ''} ${bookingDetails.travellers[0].lastName || ''}`.trim() : 
+              "Traveller",
             userEmail: bookingDetails.contactEmail,
             bookingRef: bookingDetails.bookingRef,
             tripTitle: bookingDetails.tripSnapshot?.title ?? "Your Trip",
@@ -365,7 +374,9 @@ export async function handleWebhook(
     if (bookingDetails) {
       promises.push(
         sendBookingConfirmationEmail({
-          userName: "Traveller",
+          userName: bookingDetails.travellers?.[0]?.firstName ? 
+            `${bookingDetails.travellers[0].firstName || ''} ${bookingDetails.travellers[0].lastName || ''}`.trim() : 
+            "Traveller",
           userEmail: bookingDetails.contactEmail,
           bookingRef: bookingDetails.bookingRef,
           tripTitle: bookingDetails.tripSnapshot?.title ?? "Your Trip",

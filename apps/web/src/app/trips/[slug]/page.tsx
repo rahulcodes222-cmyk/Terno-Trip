@@ -23,6 +23,18 @@ export default function TripDetailPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [travellers, setTravellers] = useState(1);
 
+  // Debug log
+  React.useEffect(() => {
+    if (trip) {
+      console.log('Trip loaded:', {
+        title: trip.title,
+        price: trip.pricePerPerson,
+        itinerary: trip.itinerary?.length ?? 0,
+        startDates: trip.startDates?.length ?? 0,
+      });
+    }
+  }, [trip]);
+
   if (isLoading) return <PageLayout><LoadingSpinner fullPage /></PageLayout>;
   if (error || !trip) {
     return (
@@ -37,9 +49,14 @@ export default function TripDetailPage() {
     );
   }
 
-  const effectivePrice = trip.discountPrice ?? trip.pricePerPerson;
-  const taxes = Math.round(effectivePrice * travellers * 0.05);
-  const total = effectivePrice * travellers + taxes;
+  const effectivePrice = (trip.discountPrice && trip.discountPrice > 0) 
+    ? trip.discountPrice 
+    : (trip.pricePerPerson && trip.pricePerPerson > 0) 
+    ? trip.pricePerPerson 
+    : 1000;
+  const displayPrice = effectivePrice;
+  const taxes = Math.round(displayPrice * travellers * 0.05);
+  const total = displayPrice * travellers + taxes;
 
   // Get available seats for selected date
   const getSeatsForDate = (date: string): number => {
@@ -174,10 +191,10 @@ export default function TripDetailPage() {
             <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
               {/* Price */}
               <div className="mb-5 border-b pb-5">
-                {trip.discountPrice ? (
+                {trip.discountPrice && trip.discountPrice > 0 ? (
                   <div>
                     <span className="text-sm text-gray-400 line-through">
-                      {formatCurrency(trip.pricePerPerson)}
+                      {formatCurrency(trip.pricePerPerson || 1000)}
                     </span>
                     <div className="text-3xl font-extrabold text-primary">
                       {formatCurrency(trip.discountPrice)}
@@ -185,7 +202,7 @@ export default function TripDetailPage() {
                   </div>
                 ) : (
                   <div className="text-3xl font-extrabold text-primary">
-                    {formatCurrency(trip.pricePerPerson)}
+                    {formatCurrency(displayPrice)}
                   </div>
                 )}
                 <p className="text-xs text-gray-400">per person</p>
@@ -227,7 +244,12 @@ export default function TripDetailPage() {
                     const seatsForDate = getSeatsForDate(d);
                     const isSoldOutDate = seatsForDate === 0;
                     return (
-                      <option key={d} value={d} disabled={isSoldOutDate}>
+                      <option 
+                        key={d} 
+                        value={d} 
+                        disabled={isSoldOutDate}
+                        className={isSoldOutDate ? 'text-gray-400' : ''}
+                      >
                         {formatDate(d)} {isSoldOutDate ? '— Sold out' : `(${seatsForDate} seats)`}
                       </option>
                     );
@@ -243,25 +265,41 @@ export default function TripDetailPage() {
                 <div className="flex items-center gap-3 rounded-lg border border-gray-300 p-2">
                   <button
                     onClick={() => setTravellers(Math.max(1, travellers - 1))}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100"
+                    disabled={travellers <= 1}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     −
                   </button>
                   <span className="flex-1 text-center text-sm font-medium">{travellers}</span>
                   <button
-                    onClick={() => setTravellers(Math.min(trip.maxGroupSize, travellers + 1))}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100"
+                    onClick={() => {
+                      // Get available seats for selected date
+                      const availableSeats = getSeatsForDate(selectedDate);
+                      // Limit by both maxGroupSize AND available seats
+                      const maxAllowed = Math.min(trip.maxGroupSize, availableSeats);
+                      setTravellers(Math.min(maxAllowed, travellers + 1));
+                    }}
+                    disabled={!selectedDate || travellers >= Math.min(trip.maxGroupSize, getSeatsForDate(selectedDate))}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     +
                   </button>
                 </div>
+                {selectedDate ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Maximum: {Math.min(trip.maxGroupSize, getSeatsForDate(selectedDate))} traveller(s) allowed
+                    {getSeatsForDate(selectedDate) === 1 ? " (only 1 seat available)" : ""}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">Select a date first</p>
+                )}
               </div>
 
               {/* Price Breakdown */}
               <div className="mb-5 space-y-2 rounded-xl bg-gray-50 p-4 text-sm">
                 <div className="flex justify-between text-gray-600">
-                  <span>{formatCurrency(effectivePrice)} × {travellers}</span>
-                  <span>{formatCurrency(effectivePrice * travellers)}</span>
+                  <span>{formatCurrency(displayPrice)} × {travellers}</span>
+                  <span>{formatCurrency(displayPrice * travellers)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Taxes & Fees (5%)</span>

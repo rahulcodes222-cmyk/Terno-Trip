@@ -93,36 +93,48 @@ export default function PaymentModal({
           mode: 'sandbox', // change to 'production' with prod credentials
         });
 
-        const result = await cashfree.checkout({
-          paymentSessionId: order.paymentSessionId,
-          redirectTarget: '_modal',
-        });
-
-        if (result.error) {
-          throw new Error((result.error as { message?: string })?.message ?? 'Payment failed');
+        try {
+          await cashfree.checkout({
+            paymentSessionId: order.paymentSessionId,
+            redirectTarget: '_modal',
+          });
+        } catch (cfError) {
+          console.log('Cashfree checkout closed or error:', cfError);
+          // User closed the checkout or encountered error
+          // Continue to verify payment on backend in case it did process
         }
 
-        // Step 3 — Verify payment server-side after SDK success
+        // Step 3 — Verify payment server-side AFTER checkout completes/closes
         setStep('processing');
-        const verified = await processPayment.mutateAsync({
-          paymentRef: order.paymentRef!,
-          scenario: 'success',
-        });
+        try {
+          const verified = await processPayment.mutateAsync({
+            paymentRef: order.paymentRef!,
+            scenario: 'success',
+          });
 
-        if (verified?.status === 'Success') {
-          setFinalBookingRef(bookingRef);
-          setStep('success');
-        } else {
-          throw new Error('Payment verification failed. Please contact support.');
+          if (verified?.status === 'Success') {
+            setFinalBookingRef(bookingRef);
+            setStep('success');
+            return;
+          }
+        } catch (verifyErr) {
+          console.log('Payment verification pending or failed:', verifyErr);
+          // Fall through to error state
         }
+        
+        throw new Error('Payment verification failed. Please contact support.');
       } else {
         // Fallback: direct mock processing (when SDK not available)
         const result = await processPayment.mutateAsync({
           paymentRef: order.paymentRef!,
           scenario: 'success',
         });
-        if (result) setFinalBookingRef(bookingRef);
-        setStep('success');
+        if (result) {
+          setFinalBookingRef(bookingRef);
+          setStep('success');
+          return;
+        }
+        throw new Error('Payment processing failed');
       }
     } catch (err: unknown) {
       const msg =

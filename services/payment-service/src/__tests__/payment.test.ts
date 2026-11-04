@@ -43,7 +43,9 @@ global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("MockPaymentProvider", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("createOrder returns a MOCK-ORD- prefixed orderId", async () => {
     const { MockPaymentProvider } = await import("../providers/MockPaymentProvider.js");
@@ -96,7 +98,7 @@ describe("Payment Service — production guard", () => {
     });
 
     const { processPayment } = await import("../services/payment.service.js");
-    await expect(processPayment("pay123", "user123", "success"))
+    await expect(processPayment("pay123", "success"))
       .rejects.toThrow();
 
     (env as { NODE_ENV: string }).NODE_ENV = originalEnv;

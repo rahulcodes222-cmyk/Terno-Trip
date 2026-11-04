@@ -102,13 +102,10 @@ function ImageUrlManager({ defaultImages = [], onChange }: ImageUrlManagerProps)
   // keep parent in sync
   useEffect(() => { onChange(urls); }, [urls, onChange]);
 
-  // sync if defaultImages changes (edit page load)
+  // sync if defaultImages changes (edit page load) — update urls array completely
   useEffect(() => {
-    if (defaultImages.length && urls.length === 0) {
-      setUrls(defaultImages);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultImages.length]);
+    setUrls(defaultImages);
+  }, [defaultImages]);
 
   const handleAdd = () => {
     const trimmed = input.trim();
@@ -224,6 +221,7 @@ export default function TripForm({
     handleSubmit,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<TripFormData>({
     resolver: zodResolver(tripFormSchema),
@@ -306,7 +304,24 @@ export default function TripForm({
     const images      = data.images?.split('\n').map(s=>s.trim()).filter(Boolean);
     const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
-    await onSubmit({ ...data, slug, inclusions, exclusions, highlights, startDates, images, itinerary: data.itinerary });
+    // Validate price
+    const price = Number(data.pricePerPerson);
+    if (!price || price <= 0) {
+      setError('pricePerPerson', { message: 'Price must be greater than 0' });
+      return;
+    }
+
+    await onSubmit({ 
+      ...data, 
+      pricePerPerson: price,
+      slug, 
+      inclusions, 
+      exclusions, 
+      highlights, 
+      startDates, 
+      images, 
+      itinerary: data.itinerary ?? []
+    });
   };
 
 

@@ -1,12 +1,7 @@
 import mongoose, { type Document, type Model, Schema } from "mongoose";
 import type { ITrip, TripCategory, TripDifficulty, ITripItineraryDay } from "@terno/shared";
 
-export interface ITripDocument extends Omit<ITrip, "_id">, Document {
-  slug: string;
-  coverImage: string;
-  seatsByStartDate?: Array<{ startDate: Date; availableSeats: number }>;
-  departureTime?: string;
-}
+export interface ITripDocument extends Omit<ITrip, "_id">, Document {}
 
 const itineraryDaySchema = new Schema<ITripItineraryDay>(
   {
@@ -33,18 +28,21 @@ const tripSchema = new Schema<ITripDocument>(
     },
     images: [{ type: String }],
     description: { type: String, required: true },
+    shortDescription: { type: String, default: "" },
     category: {
       type: String,
       required: true,
       enum: ["Adventure", "Beach", "Cultural", "Wildlife", "City", "Mountain", "Budget"] as TripCategory[],
     },
     duration: { type: Number, required: true, min: 1 },
+    nights: { type: Number, required: true, min: 0 },
     maxGroupSize: { type: Number, required: true, min: 1 },
     pricePerPerson: { type: Number, required: true, min: 0 },
     discountPrice: { type: Number, min: 0 },
     itinerary: [itineraryDaySchema],
     inclusions: [{ type: String }],
     exclusions: [{ type: String }],
+    highlights: [{ type: String }],
     accommodationType: { type: String, required: true },
     difficulty: {
       type: String,
@@ -64,6 +62,8 @@ const tripSchema = new Schema<ITripDocument>(
     ratingsQuantity: { type: Number, default: 0, min: 0 },
     cancellationPolicy: { type: String, required: true },
     isActive: { type: Boolean, default: true },
+    isFeatured: { type: Boolean, default: false },
+    masterId: { type: String, optional: true },
   },
   {
     timestamps: true,
@@ -74,8 +74,9 @@ const tripSchema = new Schema<ITripDocument>(
 
 // Auto-generate slug from title before save
 tripSchema.pre("save", function (next) {
-  if (this.isModified("title") || this.isNew) {
-    this.slug = this.title
+  const doc = this as any; // Bypass TypeScript for pre-save hook
+  if (doc.isModified("title") || doc.isNew) {
+    doc.slug = doc.title
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9\s-]/g, "")

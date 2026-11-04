@@ -41,6 +41,7 @@ export default function HeroSlider() {
   const [enquiryDest, setEnquiryDest]         = useState('');
   const [enquirySubmitted, setEnquirySubmitted] = useState(false);
   const [enquiryLoading, setEnquiryLoading]   = useState(false);
+  const [enquiryError, setEnquiryError]       = useState('');
 
   useEffect(() => {
     const t = setInterval(() => setCurrent((p) => (p + 1) % SLIDES.length), 6000);
@@ -55,21 +56,66 @@ export default function HeroSlider() {
     });
   }, [current]);
 
-  const handleEnquiry = (e: React.FormEvent) => {
+  const handleEnquiry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!enquiryName.trim() || !enquiryPhone.trim()) return;
+    setEnquiryError('');
+    
+    // Validation
+    if (!enquiryName.trim()) {
+      setEnquiryError('Please enter your name');
+      return;
+    }
+    if (!enquiryPhone.trim()) {
+      setEnquiryError('Phone number is required');
+      return;
+    }
+    if (enquiryPhone.length < 10) {
+      setEnquiryError('Please enter valid 10-digit phone number');
+      return;
+    }
+    if (enquiryEmail && !/^\S+@\S+\.\S+$/.test(enquiryEmail)) {
+      setEnquiryError('Please enter valid email address');
+      return;
+    }
+    
     setEnquiryLoading(true);
-    // Simulate submission (no API yet — store locally)
-    setTimeout(() => {
-      setEnquiryLoading(false);
+    
+    try {
+      // Send to API endpoint (will forward to admin email)
+      const response = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: enquiryName,
+          phone: enquiryPhone,
+          email: enquiryEmail,
+          destination: enquiryDest,
+          source: 'Hero Banner',
+          timestamp: new Date().toISOString()
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send enquiry');
+      }
+      
       setEnquirySubmitted(true);
-      // Reset after 4s
+      
+      // Reset form after 4s
       setTimeout(() => {
         setEnquirySubmitted(false);
-        setEnquiryName(''); setEnquiryPhone('');
-        setEnquiryEmail(''); setEnquiryDest('');
+        setEnquiryName('');
+        setEnquiryPhone('');
+        setEnquiryEmail('');
+        setEnquiryDest('');
       }, 4000);
-    }, 800);
+      
+    } catch (error) {
+      console.error('Enquiry error:', error);
+      setEnquiryError('Failed to submit enquiry. Please try again.');
+    } finally {
+      setEnquiryLoading(false);
+    }
   };
 
   return (
@@ -134,13 +180,24 @@ export default function HeroSlider() {
                     <>
                       <h3 className="mb-1 text-base font-bold text-gray-900">Quick Enquiry</h3>
                       <p className="mb-4 text-xs text-gray-500">Get a free callback from our travel expert</p>
+                      
+                      {enquiryError && (
+                        <div className="mb-3 rounded-lg bg-red-50 p-3 text-xs text-red-600">
+                          {enquiryError}
+                        </div>
+                      )}
 
                       <form onSubmit={handleEnquiry} className="space-y-3">
                         {/* Name */}
                         <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]">
                           <User className="h-4 w-4 shrink-0 text-gray-400" />
                           <input type="text" placeholder="Your Name *" value={enquiryName}
-                            onChange={(e) => setEnquiryName(e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^a-zA-Z\s.'-]/g, ''); // Allow letters, spaces, apostrophes, dots, hyphens
+                              setEnquiryName(value);
+                            }}
+                            pattern="[A-Za-z\s.'-]+"
+                            title="Please enter your name (letters, spaces, apostrophes, dots or hyphens only)"
                             required className="w-full bg-transparent text-sm focus:outline-none" />
                         </div>
 
@@ -148,7 +205,14 @@ export default function HeroSlider() {
                         <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]">
                           <Phone className="h-4 w-4 shrink-0 text-gray-400" />
                           <input type="tel" placeholder="Phone Number *" value={enquiryPhone}
-                            onChange={(e) => setEnquiryPhone(e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                              setEnquiryPhone(value.slice(0, 10)); // Limit to 10 digits
+                            }}
+                            inputMode="numeric"
+                            pattern="[0-9]{10}"
+                            maxLength={10}
+                            title="Please enter 10-digit phone number (digits only)"
                             required className="w-full bg-transparent text-sm focus:outline-none" />
                         </div>
 
@@ -157,6 +221,7 @@ export default function HeroSlider() {
                           <Mail className="h-4 w-4 shrink-0 text-gray-400" />
                           <input type="email" placeholder="Email (optional)" value={enquiryEmail}
                             onChange={(e) => setEnquiryEmail(e.target.value)}
+                            inputMode="email"
                             className="w-full bg-transparent text-sm focus:outline-none" />
                         </div>
 

@@ -158,13 +158,42 @@ export async function checkAvailability(
 
 export async function decrementSeats(
   tripId: string,
-  seats: number
+  seats: number,
+  departureDate?: string
 ): Promise<ITripDocument | null> {
-  return Trip.findOneAndUpdate(
-    { _id: tripId, availableSeats: { $gte: seats } },
-    { $inc: { availableSeats: -seats } },
-    { new: true }
-  ).lean() as Promise<ITripDocument | null>;
+  if (departureDate) {
+    // Decrement seats for specific date
+    const dateISO = new Date(departureDate).toISOString().split('T')[0];
+    
+    // Find trip and decrement per-date seats
+    const trip = await Trip.findById(tripId);
+    if (!trip) return null;
+
+    // Find the date entry in seatsByStartDate
+    const dateEntry = trip.seatsByStartDate?.find(
+      (s) => new Date(s.startDate).toISOString().split('T')[0] === dateISO
+    );
+
+    if (!dateEntry || dateEntry.availableSeats < seats) {
+      return null; // Not enough seats for this date
+    }
+
+    // Decrement seats for this date
+    const result = await Trip.findOneAndUpdate(
+      { _id: tripId, "seatsByStartDate.startDate": new Date(dateISO) },
+      { $inc: { "seatsByStartDate.$.availableSeats": -seats } },
+      { new: true }
+    ).lean();
+
+    return result as unknown as ITripDocument | null;
+  } else {
+    // Decrement global seats (legacy)
+    return Trip.findOneAndUpdate(
+      { _id: tripId, availableSeats: { $gte: seats } },
+      { $inc: { availableSeats: -seats } },
+      { new: true }
+    ).lean() as Promise<ITripDocument | null>;
+  }
 }
 
 export async function incrementSeats(

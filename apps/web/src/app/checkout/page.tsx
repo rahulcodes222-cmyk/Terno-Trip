@@ -102,9 +102,22 @@ function CheckoutContent() {
     return <PageLayout><p className="p-8 text-center text-gray-500">Trip not found.</p></PageLayout>;
   }
 
-  const effectivePrice = trip.discountPrice ?? trip.pricePerPerson;
+  const effectivePrice = (trip.discountPrice && trip.discountPrice > 0) 
+    ? trip.discountPrice 
+    : (trip.pricePerPerson && trip.pricePerPerson > 0) 
+    ? trip.pricePerPerson 
+    : 1000;
   const taxes = Math.round(effectivePrice * fields.length * 0.05);
   const total = effectivePrice * fields.length + taxes;
+  
+  // Debug logging
+  console.log('=== CHECKOUT DEBUG ===');
+  console.log('Trip object:', trip);
+  console.log('pricePerPerson:', trip.pricePerPerson);
+  console.log('discountPrice:', trip.discountPrice);
+  console.log('effectivePrice:', effectivePrice);
+  console.log('fields.length:', fields.length);
+  console.log('total:', total);
 
   const onSubmit = async (data: CheckoutForm) => {
     setBookingError('');

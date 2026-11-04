@@ -82,7 +82,9 @@ function mockReqRes(body = {}, params = {}, user = { id: "user123", role: "user"
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("Booking Controller", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   describe("createBooking", () => {
     it("returns 201 with bookingRef on success", async () => {

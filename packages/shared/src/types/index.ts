@@ -45,16 +45,21 @@ export interface ITripItineraryDay {
 export interface ITrip {
   _id: string;
   title: string;
+  slug: string;
   destination: string;
   country: string;
+  coverImage: string;
   description: string;
+  shortDescription?: string;
   category: TripCategory;
   /** Duration in days */
   duration: number;
+  nights: number;
   maxGroupSize: number;
   pricePerPerson: number;
   discountPrice?: number;
   images: string[];
+  highlights?: string[];
   itinerary: ITripItineraryDay[];
   inclusions: string[];
   exclusions: string[];
@@ -68,6 +73,8 @@ export interface ITrip {
   ratingsQuantity: number;
   cancellationPolicy: string;
   isActive: boolean;
+  isFeatured: boolean;
+  masterId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
