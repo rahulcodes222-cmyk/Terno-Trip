@@ -87,6 +87,21 @@ export default function TripDetailPage() {
       return;
     }
 
+    // Check available seats for selected date
+    const availableSeats = getSeatsForDate(selectedDate);
+    
+    // Check if travellers exceed available seats
+    if (travellers > availableSeats) {
+      alert(`Only ${availableSeats} seat${availableSeats !== 1 ? 's' : ''} available for selected date. Please reduce number of travellers.`);
+      return;
+    }
+
+    // Check if travellers exceed max group size
+    if (travellers > trip.maxGroupSize) {
+      alert(`Maximum ${trip.maxGroupSize} traveller${trip.maxGroupSize !== 1 ? 's' : ''} allowed per booking.`);
+      return;
+    }
+
     if (!isAuthenticated) {
       saveBookingIntent({
         tripId: trip._id,
@@ -236,7 +251,22 @@ export default function TripDetailPage() {
                 </label>
                 <select
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setSelectedDate(newDate);
+                    
+                    // Reset travellers or adjust if they exceed available seats
+                    if (newDate) {
+                      const availableSeats = getSeatsForDate(newDate);
+                      if (travellers > availableSeats) {
+                        // Show alert if travellers exceed available seats
+                        if (travellers > 1 && availableSeats > 0) {
+                          alert(`Only ${availableSeats} seat${availableSeats !== 1 ? 's' : ''} available for selected date. Adjusting travellers to ${availableSeats}.`);
+                        }
+                        setTravellers(Math.min(availableSeats, trip.maxGroupSize));
+                      }
+                    }
+                  }}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="">Select a date</option>
@@ -286,10 +316,17 @@ export default function TripDetailPage() {
                   </button>
                 </div>
                 {selectedDate ? (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Maximum: {Math.min(trip.maxGroupSize, getSeatsForDate(selectedDate))} traveller(s) allowed
-                    {getSeatsForDate(selectedDate) === 1 ? " (only 1 seat available)" : ""}
-                  </p>
+                  <div className="mt-1">
+                    <p className="text-xs text-gray-500">
+                      Maximum: {Math.min(trip.maxGroupSize, getSeatsForDate(selectedDate))} traveller(s) allowed
+                      {getSeatsForDate(selectedDate) === 1 ? " (only 1 seat available)" : ""}
+                    </p>
+                    {travellers > getSeatsForDate(selectedDate) && (
+                      <p className="mt-1 text-xs font-semibold text-red-600">
+                        ⚠️ Exceeds available seats! Only {getSeatsForDate(selectedDate)} seat{getSeatsForDate(selectedDate) !== 1 ? 's' : ''} left.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <p className="mt-1 text-xs text-gray-400">Select a date first</p>
                 )}
@@ -316,9 +353,11 @@ export default function TripDetailPage() {
                 size="lg"
                 className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleBookNow}
-                disabled={isSoldOut}
+                disabled={isSoldOut || !selectedDate || travellers > getSeatsForDate(selectedDate) || travellers > trip.maxGroupSize}
               >
                 Book Now
+                {(!selectedDate || travellers > getSeatsForDate(selectedDate) || travellers > trip.maxGroupSize) && !isSoldOut ? 
+                  " (Check travellers)" : ""}
               </Button>
               <p className="mt-2 text-center text-xs text-gray-400">
                 No charges until payment step
@@ -334,8 +373,11 @@ export default function TripDetailPage() {
               <div className="text-lg font-bold text-primary">{formatCurrency(total)}</div>
               <div className="text-xs text-gray-400">for {travellers} person{travellers !== 1 ? 's' : ''}</div>
             </div>
-            <Button variant="primary" size="lg" onClick={handleBookNow} disabled={isSoldOut}>
+            <Button variant="primary" size="lg" onClick={handleBookNow} 
+              disabled={isSoldOut || !selectedDate || travellers > getSeatsForDate(selectedDate) || travellers > trip.maxGroupSize}>
               Book Now
+              {(!selectedDate || travellers > getSeatsForDate(selectedDate) || travellers > trip.maxGroupSize) && !isSoldOut ? 
+                " (Check travellers)" : ""}
             </Button>
           </div>
         </div>
