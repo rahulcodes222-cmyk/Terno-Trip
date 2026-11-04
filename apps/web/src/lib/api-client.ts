@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// Detect API URL based on environment
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// If running on Vercel, use Render API
+if (typeof window !== 'undefined' && window.location.origin.includes('terno-trip.vercel.app')) {
+  API_URL = 'https://terno-trip-4.onrender.com';
+}
 
 const apiClient = axios.create({
   baseURL: API_URL,

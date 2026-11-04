@@ -21,7 +21,28 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      // Allow local development
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // Allow Vercel deployment
+      if (origin.includes('terno-trip.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow Render deployment
+      if (origin.includes('terno-trip-4.onrender.com')) {
+        return callback(null, true);
+      }
+      
+      // Reject all other origins
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
