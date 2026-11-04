@@ -1,0 +1,38 @@
+# ULTIMATE SOLUTION: Build locally, then create Docker image
+# 1. First build everything locally
+# 2. Then create Docker image from built files
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy the ALREADY BUILT dist files
+# You need to build these locally first:
+# cd packages/shared && npm run build
+# cd services/shared-events && npm run build  
+# cd services/booking-service && npm run build
+
+# Copy built files
+COPY packages/shared/dist packages/shared/dist
+COPY packages/shared/package.json packages/shared/package.json
+
+COPY services/shared-events/dist services/shared-events/dist
+COPY services/shared-events/package.json services/shared-events/package.json
+
+COPY services/booking-service/dist services/booking-service/dist
+COPY services/booking-service/package.json services/booking-service/package.json
+
+# Create package.json with file dependencies
+RUN echo '{ \
+  "name": "booking-service-container", \
+  "dependencies": { \
+    "@terno/shared": "file:./packages/shared", \
+    "@terno/shared-events": "file:./services/shared-events" \
+  } \
+}' > package.json
+
+# Install dependencies
+RUN npm install --production
+
+EXPOSE 4004
+CMD ["node", "services/booking-service/dist/index.js"]
