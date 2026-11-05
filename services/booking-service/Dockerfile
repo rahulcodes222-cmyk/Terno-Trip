@@ -27,7 +27,7 @@ app.get('/', (_req, res) => {
     service: 'booking-service',
     version: '1.0.0',
     status: 'running',
-    endpoints: ['/health', '/api/v1/bookings', '/api/v1/bookings/my', '/api/v1/bookings/:ref', '/api/v1/admin/bookings']
+    endpoints: ['/health', '/api/v1/bookings', '/api/v1/bookings/my', '/api/v1/bookings/:ref', '/api/v1/admin/bookings', '/api/v1/internal/bookings/update-payment']
   });
 });
 
@@ -117,6 +117,19 @@ app.get('/api/v1/admin/bookings', (req, res) => {
     data,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
   });
+});
+
+// POST /api/v1/internal/bookings/update-payment — Payment-service confirms booking
+app.post('/api/v1/internal/bookings/update-payment', (req, res) => {
+  const { bookingId, paymentStatus, paymentId } = req.body || {};
+  const booking = bookings.find(b => b._id === bookingId || b.bookingRef === bookingId);
+  if (!booking) {
+    return res.status(404).json({ success: false, message: 'Booking not found' });
+  }
+  booking.paymentStatus = paymentStatus || 'Pending';
+  booking.status = paymentStatus === 'Paid' ? 'Confirmed' : 'Pending';
+  if (paymentId) booking.paymentId = paymentId;
+  res.json({ success: true, message: 'Payment status updated', data: booking });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

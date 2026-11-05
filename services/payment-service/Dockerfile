@@ -1,5 +1,6 @@
 # Payment Service Dockerfile — Real Cashfree integration with safe fallback
 # Self-contained — builds on any context. Never 502s (falls back to mock).
+# After successful payment, calls booking-service to mark booking Confirmed.
 
 FROM node:20-alpine
 
@@ -9,14 +10,16 @@ RUN cat > server.js << 'EOF'
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 4005;
+const BOOKING_SERVICE_URL = process.env.BOOKING_SERVICE_URL || 'http://localhost:4004';
 
 app.use(express.json());
 
 console.log('🚀 Payment Service Starting...');
 console.log('PORT:', PORT);
 console.log('CASHFREE_ENV:', process.env.CASHFREE_ENV || 'sandbox');
+console.log('BOOKING_SERVICE_URL:', BOOKING_SERVICE_URL);
 
-// ─── Cashfree SDK (real gateway) ─────────────────────────────────────────────
+// ─── Cashfree SDK (real gateway — shows Card / UPI / Net Banking / Wallet) ───
 let cashfreeClient = null;
 let cashfreeAvailable = false;
 
@@ -30,12 +33,29 @@ try {
   if (appId && secretKey) {
     cashfreeClient = new Cashfree(cfEnv, appId, secretKey);
     cashfreeAvailable = true;
-    console.log('✅ Cashfree SDK initialized (' + envMode + ')');
+    console.log('✅ Cashfree SDK initialized (' + envMode + ') — Card/UPI/Banking available');
   } else {
-    console.log('⚠️  Cashfree credentials missing — running in mock mode');
+    console.log('⚠️  Cashfree credentials missing — running in dummy/mock mode');
   }
 } catch (err) {
-  console.log('⚠️  Cashfree SDK not available — running in mock mode:', err.message);
+  console.log('⚠️  Cashfree SDK not available — running in dummy/mock mode:', err.message);
+}
+
+// orderId → bookingRef mapping (so we can confirm the right booking after payment)
+const orderBookingMap = {};
+
+// Helper: tell booking-service to mark booking Confirmed
+async function confirmBooking(bookingRef, paymentId) {
+  try {
+    await fetch(`${BOOKING_SERVICE_URL}/api/v1/internal/bookings/update-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId: bookingRef, paymentStatus: 'Paid', paymentId })
+    });
+    console.log('✅ Booking confirmed:', bookingRef);
+  } catch (err) {
+    console.error('❌ Failed to confirm booking:', bookingRef, err.message);
+  }
 }
 
 // Health endpoint — always works
@@ -59,12 +79,13 @@ app.get('/', (_req, res) => {
   });
 });
 
-// POST /api/v1/payments/orders — create payment order (real Cashfree or mock fallback)
+// POST /api/v1/payments/orders — create payment order (real Cashfree or dummy fallback)
 app.post('/api/v1/payments/orders', async (req, res) => {
   try {
     const { bookingRef, amount, currency, email, phone } = req.body || {};
     const orderAmount = Number(amount) || 0;
     const orderId = 'TERNO-' + Date.now();
+    orderBookingMap[orderId] = bookingRef || orderId;
 
     console.log('📦 Create payment order:', JSON.stringify({ bookingRef, amount: orderAmount, currency }));
 
@@ -101,14 +122,14 @@ app.post('/api/v1/payments/orders', async (req, res) => {
         });
         return;
       } catch (cfErr) {
-        console.error('❌ Cashfree createOrder failed, falling back to mock:', cfErr.message);
+        console.error('❌ Cashfree createOrder failed, falling back to dummy:', cfErr.message);
       }
     }
 
-    // Mock fallback — always works
+    // Dummy fallback — always works (no Cashfree creds needed)
     res.json({
       success: true,
-      message: 'Payment order created (mock)',
+      message: 'Payment order created (dummy)',
       data: {
         orderId,
         paymentSessionId: 'session_' + Date.now(),
@@ -125,13 +146,14 @@ app.post('/api/v1/payments/orders', async (req, res) => {
   }
 });
 
-// POST /api/v1/payments/orders/:id/process — process payment (Cashfree fetch or mock success)
+// POST /api/v1/payments/orders/:id/process — process payment (dummy success → booking Confirmed)
 app.post('/api/v1/payments/orders/:id/process', async (req, res) => {
   try {
     const { scenario = 'success' } = req.body || {};
     const orderId = req.params.id;
+    const bookingRef = orderBookingMap[orderId] || orderId;
 
-    console.log('🔄 Process payment order:', orderId, 'scenario:', scenario);
+    console.log('🔄 Process payment order:', orderId, 'scenario:', scenario, 'bookingRef:', bookingRef);
 
     if (cashfreeAvailable && cashfreeClient) {
       try {
@@ -142,31 +164,37 @@ app.post('/api/v1/payments/orders/:id/process', async (req, res) => {
         if (status === 'PAID') resultStatus = 'Success';
         else if (status === 'EXPIRED' || status === 'TERMINATED') resultStatus = 'Failed';
 
+        const txnId = 'CF-' + (data.cf_order_id || orderId);
+        if (resultStatus === 'Success') await confirmBooking(bookingRef, txnId);
+
         res.json({
           success: true,
           message: 'Payment processed (Cashfree)',
           data: {
             orderId,
             status: resultStatus,
-            transactionId: 'CF-' + (data.cf_order_id || orderId),
+            transactionId: txnId,
             processedAt: new Date().toISOString()
           }
         });
         return;
       } catch (cfErr) {
-        console.error('❌ Cashfree fetchOrder failed, falling back to mock:', cfErr.message);
+        console.error('❌ Cashfree fetchOrder failed, falling back to dummy:', cfErr.message);
       }
     }
 
-    // Mock fallback — respects scenario
+    // Dummy fallback — respects scenario (success = Confirmed booking)
     const resultStatus = scenario === 'success' ? 'Success' : (scenario === 'failure' ? 'Failed' : 'Pending');
+    const txnId = 'txn_' + Date.now();
+    if (resultStatus === 'Success') await confirmBooking(bookingRef, txnId);
+
     res.json({
       success: true,
-      message: 'Payment processed (mock)',
+      message: 'Payment processed (dummy)',
       data: {
         orderId,
         status: resultStatus,
-        transactionId: 'txn_' + Date.now(),
+        transactionId: txnId,
         processedAt: new Date().toISOString()
       }
     });
@@ -210,7 +238,7 @@ app.post('/api/v1/payments/webhook', (_req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Payment service running on port ${PORT}`);
   console.log(`✅ Health endpoint: http://0.0.0.0:${PORT}/health`);
-  console.log(`✅ Cashfree: ${cashfreeAvailable ? 'LIVE' : 'MOCK'}`);
+  console.log(`✅ Cashfree: ${cashfreeAvailable ? 'LIVE (Card/UPI/Banking)' : 'DUMMY'}`);
 });
 
 process.on('uncaughtException', (err) => { console.error('Uncaught Exception:', err); });
