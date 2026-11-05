@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 4004;
 
 app.use(express.json());
 
-console.log('🚀 Booking Service (Mock) Starting...');
+console.log('🚀 Booking Service Starting...');
 console.log('PORT:', PORT);
 
 // Health endpoint
