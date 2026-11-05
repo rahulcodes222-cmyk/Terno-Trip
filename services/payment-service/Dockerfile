@@ -116,7 +116,8 @@ app.post('/api/v1/payments/orders', async (req, res) => {
             amount: data.order_amount || orderAmount,
             currency: data.order_currency || currency || 'INR',
             status: 'created',
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            cashfree: true
           }
         });
         return;
@@ -136,7 +137,8 @@ app.post('/api/v1/payments/orders', async (req, res) => {
         amount: orderAmount,
         currency: currency || 'INR',
         status: 'created',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        cashfree: false
       }
     });
   } catch (err) {

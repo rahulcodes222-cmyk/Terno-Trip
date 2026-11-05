@@ -17,6 +17,7 @@ interface CreateOrderResult {
   currency: string;
   status: string;
   paymentSessionId?: string;
+  cashfree?: boolean;
 }
 
 interface ProcessPaymentResult {

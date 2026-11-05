@@ -87,14 +87,14 @@ export default function PaymentModal({
         phone: user?.email ? undefined : undefined,
       });
 
-      // Step 2 — Create order done; now open Cashfree checkout (card / UPI / wallet)
+      // Step 2 — Create order done; open Cashfree checkout only if backend is in live mode
       const sessionId = order?.paymentSessionId || order?.paymentRef;
       if (!sessionId) {
         throw new Error('No payment session ID received from server.');
       }
 
-      // Try real Cashfree SDK (shows Card / UPI / Net Banking / Wallet)
-      if (typeof window !== 'undefined' && window.Cashfree && sdkReady) {
+      // Only use real Cashfree SDK when backend has Cashfree credentials (live mode)
+      if (order?.cashfree && typeof window !== 'undefined' && window.Cashfree && sdkReady) {
         try {
           const cf = window.Cashfree({ mode: 'sandbox' });
           const result = cf.checkout({
@@ -102,7 +102,7 @@ export default function PaymentModal({
             redirectTarget: '_blank',
           });
           if (result?.error) {
-            console.error('Cashfree checkout error:', result.error);
+            console.warn('Cashfree checkout error, falling back to dummy:', result.error);
           }
         } catch (cfErr) {
           console.warn('Cashfree checkout failed, falling back to dummy:', cfErr);
