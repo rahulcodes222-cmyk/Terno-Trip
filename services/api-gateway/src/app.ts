@@ -22,28 +22,63 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Log all origins for debugging
+      console.log(`CORS check for origin: ${origin || '(no origin)'}`);
+      
       // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-      
-      // Allow local development
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      if (!origin) {
+        console.log('Allowing: no origin');
         return callback(null, true);
       }
       
-      // Allow Vercel deployment
-      if (origin.includes('terno-trip.vercel.app')) {
-        return callback(null, true);
-      }
+      // TEMPORARY FIX: Allow ALL origins for debugging
+      // In production, you should restrict this to specific domains
+      console.log(`Allowing: ${origin} (temporary permissive CORS)`);
+      return callback(null, true);
       
-      // Allow Render deployment
-      if (origin.includes('terno-trip-4.onrender.com')) {
-        return callback(null, true);
+      /* PRODUCTION CORS (commented out for now)
+      try {
+        const originUrl = new URL(origin);
+        const originHostname = originUrl.hostname;
+        
+        // Allow local development
+        if (originHostname === 'localhost' || originHostname === '127.0.0.1') {
+          console.log('Allowing: localhost');
+          return callback(null, true);
+        }
+        
+        // Allow Vercel deployment
+        if (originHostname === 'terno-trip.vercel.app') {
+          console.log('Allowing: terno-trip.vercel.app');
+          return callback(null, true);
+        }
+        
+        // Allow Render deployment
+        if (originHostname === 'terno-trip-4.onrender.com') {
+          console.log('Allowing: terno-trip-4.onrender.com');
+          return callback(null, true);
+        }
+        
+        // Also check if it's a subdomain of vercel.app (for preview deployments)
+        if (originHostname.endsWith('.vercel.app')) {
+          console.log(`Allowing: ${originHostname} (vercel.app subdomain)`);
+          return callback(null, true);
+        }
+        
+        // Reject all other origins
+        console.warn(`CORS blocked: ${origin}`);
+        return callback(new Error('Not allowed by CORS'));
+      } catch (error) {
+        // If URL parsing fails, reject the request
+        console.warn(`Invalid origin URL: ${origin}`);
+        return callback(new Error('Invalid origin'));
       }
-      
-      // Reject all other origins
-      return callback(new Error('Not allowed by CORS'));
+      */
     },
     credentials: true,
+    optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-secret', 'x-user-id', 'x-user-role', 'x-correlation-id'],
+    exposedHeaders: ['Content-Type', 'Authorization', 'x-internal-secret', 'x-user-id', 'x-user-role', 'x-correlation-id'],
   })
 );
 
