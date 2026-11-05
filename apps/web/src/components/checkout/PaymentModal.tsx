@@ -109,28 +109,33 @@ export default function PaymentModal({
         }
       }
 
-      // Simulate processing delay (Cashfree SDK handles actual payment in popup)
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Step 3 — Verify payment server-side
+      // Step 3 - Poll backend until payment completes (Cashfree popup) or timeout
       setStep('processing');
-      try {
-        const verified = await processPayment.mutateAsync({
-          paymentRef: order.paymentRef!,
-          scenario: 'success',
-        });
-
-        if (verified?.status === 'Success') {
-          setFinalBookingRef(bookingRef);
-          setStep('success');
-          return;
+      const maxAttempts = 30;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 3000 : 2000));
+        try {
+          const verified = await processPayment.mutateAsync({
+            paymentRef: order.orderId!,
+            scenario: 'success',
+          });
+          const status = (verified?.status || '').toLowerCase();
+          if (status === 'success') {
+            setFinalBookingRef(bookingRef);
+            setStep('success');
+            return;
+          }
+          if (status === 'failed') {
+            throw new Error('Payment failed. Please try again.');
+          }
+        } catch (verifyErr) {
+          if ((verifyErr as Error)?.message === 'Payment failed. Please try again.') {
+            throw verifyErr;
+          }
+          console.log('Payment verification pending:', verifyErr);
         }
-      } catch (verifyErr) {
-        console.log('Payment verification pending or failed:', verifyErr);
-        throw new Error('Payment verification failed. Please contact support.');
       }
-      
-      throw new Error('Payment processing failed');
+      throw new Error('Payment timed out. Please try again.');
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
