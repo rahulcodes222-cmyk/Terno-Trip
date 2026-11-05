@@ -42,7 +42,7 @@ EOF
 
 # Copy ACTUAL booking service files from current directory
 # Render's build context has these files
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY src/ ./src/
 COPY tsconfig.json ./
 
@@ -50,7 +50,7 @@ COPY tsconfig.json ./
 RUN echo '{"workspaces": ["packages/*", "services/*"]}' > /app/package.json
 
 # Install and "build" (we're using TypeScript directly)
-RUN npm install
+RUN npm install express dotenv zod mongoose
 RUN npx tsc --project tsconfig.json || echo "TypeScript compilation completed"
 
 EXPOSE 4004
