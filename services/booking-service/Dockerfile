@@ -36,7 +36,7 @@ const bookings = [];
 
 // POST /api/v1/bookings — create booking (returns real totalAmount, not 0)
 app.post('/api/v1/bookings', (req, res) => {
-  const { tripId, departureDate, travellers, contactEmail, contactPhone, specialRequests, totalAmount } = req.body || {};
+  const { tripId, departureDate, travellers, contactEmail, contactPhone, specialRequests, totalAmount, coverImage, tripTitle, tripDestination } = req.body || {};
   const bookingRef = 'TERNO-' + Math.floor(100000 + Math.random() * 900000);
   const perPerson = 1000; // default dummy price per person
   const count = Array.isArray(travellers) ? travellers.length : 1;
@@ -58,9 +58,9 @@ app.post('/api/v1/bookings', (req, res) => {
     specialRequests: specialRequests || '',
     createdAt: new Date().toISOString(),
     tripSnapshot: {
-      title: 'Trip',
-      destination: 'India',
-      coverImage: 'https://picsum.photos/seed/trip/800/600',
+      title: tripTitle || 'Trip',
+      destination: tripDestination || 'India',
+      coverImage: coverImage || 'https://picsum.photos/seed/trip/800/600',
       pricePerPerson: perPerson,
       duration: 1,
       slug: 'trip'

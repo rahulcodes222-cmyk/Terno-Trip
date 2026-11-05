@@ -138,6 +138,9 @@ function CheckoutContent() {
         contactEmail: data.contactEmail,
         contactPhone: data.contactPhone, // already stripped of spaces by zod transform
         specialRequests: data.specialRequests,
+        coverImage: trip.coverImage,
+        tripTitle: trip.title,
+        tripDestination: trip.destination,
       });
       setCreatedBookingRef(booking.bookingRef);
       setCreatedAmount(booking.totalAmount);
