@@ -1,0 +1,23 @@
+# Simple Booking Service Dockerfile
+# Minimal working version for Render
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy all files
+COPY . .
+
+# Install dependencies
+RUN npm install
+
+# Create production .env file with defaults
+RUN echo "PORT=4004" > .env && \
+    echo "NODE_ENV=production" >> .env && \
+    echo "# Production URLs will be set via Render environment variables" >> .env
+
+# Build TypeScript if dist doesn't exist
+RUN if [ ! -d "dist" ]; then npm run build; fi
+
+EXPOSE 4004
+CMD ["node", "dist/index.js"]
