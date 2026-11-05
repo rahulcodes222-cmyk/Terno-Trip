@@ -1,99 +1,36 @@
-# Ultra Simple Booking Service Dockerfile
-# Guaranteed to work on Render
-
-FROM node:20-alpine
-
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Create the simplest possible Express server
-RUN cat > server.js << 'EOF'
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 4004;
+# Copy workspace manifests
+COPY package*.json ./
+COPY packages/shared/package*.json ./packages/shared/
+COPY services/shared-events/package*.json ./services/shared-events/
+COPY services/booking-service/package*.json ./services/booking-service/
 
-app.use(express.json());
+# Install all workspace deps
+RUN npm ci --ignore-scripts
 
-// Log environment
-console.log('🚀 Booking Service Starting...');
-console.log('PORT:', PORT);
-console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+# Copy source
+COPY packages/shared/ ./packages/shared/
+COPY services/shared-events/ ./services/shared-events/
+COPY services/booking-service/ ./services/booking-service/
+COPY tsconfig.json ./
 
-// Health endpoint - ALWAYS works
-app.get('/health', (req, res) => {
-  console.log('Health check requested');
-  res.json({ 
-    status: 'healthy', 
-    service: 'booking',
-    timestamp: new Date().toISOString()
-  });
-});
+# Build shared packages first, then the service
+RUN npm run build --workspace=packages/shared
+RUN npm run build --workspace=services/shared-events
+RUN npm run build --workspace=services/booking-service
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    service: 'booking-service',
-    version: '2.0.0',
-    status: 'running',
-    endpoints: ['/health', '/api/v1/bookings']
-  });
-});
+# ── Stage 2: Production ──────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
 
-// Booking endpoint - SIMPLIFIED VERSION
-app.post('/api/v1/bookings', (req, res) => {
-  console.log('📦 Booking request received:', JSON.stringify(req.body));
-  
-  // Generate a booking reference
-  const bookingRef = 'TERNO-' + Math.floor(100000 + Math.random() * 900000);
-  
-  // Simple response - always succeeds for testing
-  res.json({
-    success: true,
-    message: 'Booking created successfully',
-    data: {
-      bookingRef: bookingRef,
-      status: 'Pending',
-      totalAmount: 0, // Would calculate from trip service
-      createdAt: new Date().toISOString()
-    }
-  });
-  
-  console.log('✅ Booking created:', bookingRef);
-});
-
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Booking service running on port ${PORT}`);
-  console.log(`✅ Health endpoint: http://0.0.0.0:${PORT}/health`);
-  console.log(`✅ Ready to accept requests!`);
-});
-
-// Handle errors
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-EOF
-
-# Create minimal package.json
-RUN cat > package.json << 'EOF'
-{
-  "name": "booking-service",
-  "version": "2.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  }
-}
-EOF
-
-# Install ONLY express (no other dependencies)
-RUN npm install express@4.18.2
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared ./packages/shared
+COPY --from=builder /app/services/shared-events ./services/shared-events
+COPY --from=builder /app/services/booking-service/dist ./services/booking-service/dist
+COPY --from=builder /app/services/booking-service/package.json ./services/booking-service/package.json
 
 EXPOSE 4004
-CMD ["node", "server.js"]
+CMD ["node", "services/booking-service/dist/index.js"]
