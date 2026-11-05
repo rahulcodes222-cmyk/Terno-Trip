@@ -87,46 +87,33 @@ export default function PaymentModal({
         phone: user?.email ? undefined : undefined,
       });
 
-      // Step 2 — Open Cashfree checkout if session available
-      // TEMPORARY: Skip Cashfree for testing
+      // Step 2 — TEMPORARY: Skip Cashfree for testing
       console.log('⚠️ TEMPORARY: Skipping Cashfree SDK for testing');
       console.log('Payment session ID:', order?.paymentSessionId);
       
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Step 3 — Verify payment server-side AFTER checkout completes/closes
-        setStep('processing');
-        try {
-          const verified = await processPayment.mutateAsync({
-            paymentRef: order.paymentRef!,
-            scenario: 'success',
-          });
-
-          if (verified?.status === 'Success') {
-            setFinalBookingRef(bookingRef);
-            setStep('success');
-            return;
-          }
-        } catch (verifyErr) {
-          console.log('Payment verification pending or failed:', verifyErr);
-          // Fall through to error state
-        }
-        
-        throw new Error('Payment verification failed. Please contact support.');
-      } else {
-        // Fallback: direct mock processing (when SDK not available)
-        const result = await processPayment.mutateAsync({
+      // Step 3 — Verify payment server-side (mock verification for testing)
+      setStep('processing');
+      try {
+        const verified = await processPayment.mutateAsync({
           paymentRef: order.paymentRef!,
           scenario: 'success',
         });
-        if (result) {
+
+        if (verified?.status === 'Success') {
           setFinalBookingRef(bookingRef);
           setStep('success');
           return;
         }
-        throw new Error('Payment processing failed');
+      } catch (verifyErr) {
+        console.log('Payment verification pending or failed:', verifyErr);
+        // Fall through to error state
+        throw new Error('Payment verification failed. Please contact support.');
       }
+      
+      throw new Error('Payment processing failed');
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
