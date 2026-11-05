@@ -42,19 +42,29 @@ app.post('/api/v1/bookings', (req, res) => {
   const count = Array.isArray(travellers) ? travellers.length : 1;
   const total = totalAmount != null ? Number(totalAmount) : count * perPerson;
 
+  const travellersArr = Array.isArray(travellers) ? travellers : [];
   const booking = {
     _id: 'booking_' + Date.now(),
     bookingRef,
     tripId,
     departureDate,
-    travellers,
-    contactEmail,
-    contactPhone,
-    specialRequests: specialRequests || '',
+    travellers: travellersArr,
+    travellersCount: travellersArr.length,
     totalAmount: total,
     status: 'Pending',
     paymentStatus: 'Pending',
-    createdAt: new Date().toISOString()
+    contactEmail: contactEmail || '',
+    contactPhone: contactPhone || '',
+    specialRequests: specialRequests || '',
+    createdAt: new Date().toISOString(),
+    tripSnapshot: {
+      title: 'Trip',
+      destination: 'India',
+      coverImage: 'https://picsum.photos/seed/trip/800/600',
+      pricePerPerson: perPerson,
+      duration: 1,
+      slug: 'trip'
+    }
   };
   bookings.push(booking);
   console.log('✅ Booking created:', bookingRef, 'totalAmount:', total);
