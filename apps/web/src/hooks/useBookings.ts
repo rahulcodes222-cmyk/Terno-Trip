@@ -38,6 +38,9 @@ export function useCreateBooking() {
       contactEmail: string;
       contactPhone: string;
       specialRequests?: string;
+      coverImage?: string;
+      tripTitle?: string;
+      tripDestination?: string;
     }) => {
       const res = await apiClient.post<ApiResponse<IBooking>>('/api/v1/bookings', data);
       return res.data.data;
