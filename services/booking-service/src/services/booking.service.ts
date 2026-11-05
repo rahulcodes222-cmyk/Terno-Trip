@@ -84,7 +84,10 @@ async function fetchTripAvailability(
     `${env.TRIP_SERVICE_URL}/api/v1/trips/check-availability`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
+      },
       body: JSON.stringify({ tripId, departureDate, seats }),
       signal: AbortSignal.timeout(5000),
     }
