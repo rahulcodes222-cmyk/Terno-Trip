@@ -1,6 +1,5 @@
-# Ultra Simple Booking Service Dockerfile
-# Self-contained — no external COPY so it builds on any context.
-# Includes GET /api/v1/bookings/my (My Bookings) and returns real totalAmount.
+# Booking Service Dockerfile — self-contained, builds on any context
+# Fixes: GET /api/v1/bookings/my (My Bookings 404) and returns real totalAmount (not ₹0)
 
 FROM node:20-alpine
 
@@ -27,7 +26,7 @@ app.get('/', (_req, res) => {
     service: 'booking-service',
     version: '1.0.0',
     status: 'running',
-    endpoints: ['/health', '/api/v1/bookings', '/api/v1/bookings/my', '/api/v1/bookings/:ref', '/api/v1/admin/bookings', '/api/v1/internal/bookings/update-payment']
+    endpoints: ['/health', '/api/v1/bookings', '/api/v1/bookings/my', '/api/v1/bookings/:ref']
   });
 });
 
@@ -36,9 +35,9 @@ const bookings = [];
 
 // POST /api/v1/bookings — create booking (returns real totalAmount, not 0)
 app.post('/api/v1/bookings', (req, res) => {
-  const { tripId, departureDate, travellers, contactEmail, contactPhone, specialRequests, totalAmount, coverImage, tripTitle, tripDestination } = req.body || {};
+  const { tripId, departureDate, travellers, contactEmail, contactPhone, specialRequests, totalAmount } = req.body || {};
   const bookingRef = 'TERNO-' + Math.floor(100000 + Math.random() * 900000);
-  const perPerson = 1000; // default dummy price per person
+  const perPerson = 1000;
   const count = Array.isArray(travellers) ? travellers.length : 1;
   const total = totalAmount != null ? Number(totalAmount) : count * perPerson;
 
@@ -56,15 +55,7 @@ app.post('/api/v1/bookings', (req, res) => {
     contactEmail: contactEmail || '',
     contactPhone: contactPhone || '',
     specialRequests: specialRequests || '',
-    createdAt: new Date().toISOString(),
-    tripSnapshot: {
-      title: tripTitle || 'Trip',
-      destination: tripDestination || 'India',
-      coverImage: coverImage || 'https://picsum.photos/seed/trip/800/600',
-      pricePerPerson: perPerson,
-      duration: 1,
-      slug: 'trip'
-    }
+    createdAt: new Date().toISOString()
   };
   bookings.push(booking);
   console.log('✅ Booking created:', bookingRef, 'totalAmount:', total);
@@ -104,22 +95,7 @@ app.delete('/api/v1/bookings/:id', (req, res) => {
   res.json({ success: true, message: 'Booking cancelled successfully', data: booking });
 });
 
-// GET /api/v1/admin/bookings — Admin: all bookings (all users)
-app.get('/api/v1/admin/bookings', (req, res) => {
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
-  const total = bookings.length;
-  const data = bookings.slice(skip, skip + limit);
-  res.json({
-    success: true,
-    message: 'All bookings fetched',
-    data,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
-  });
-});
-
-// POST /api/v1/internal/bookings/update-payment — Payment-service confirms booking
+// POST /api/v1/internal/bookings/update-payment — Payment-service confirms booking Confirmed
 app.post('/api/v1/internal/bookings/update-payment', (req, res) => {
   const { bookingId, paymentStatus, paymentId } = req.body || {};
   const booking = bookings.find(b => b._id === bookingId || b.bookingRef === bookingId);

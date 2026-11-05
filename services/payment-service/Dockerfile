@@ -1,6 +1,6 @@
-# Payment Service Dockerfile — Real Cashfree integration with safe fallback
-# Self-contained — builds on any context. Never 502s (falls back to mock).
-# After successful payment, calls booking-service to mark booking Confirmed.
+# Payment Service Dockerfile — Cashfree payment (card / UPI / net banking / wallet)
+# Self-contained, builds on any context. Never 502s (dummy fallback if no creds).
+# After successful payment, marks booking Confirmed via booking-service.
 
 FROM node:20-alpine
 
@@ -17,9 +17,8 @@ app.use(express.json());
 console.log('🚀 Payment Service Starting...');
 console.log('PORT:', PORT);
 console.log('CASHFREE_ENV:', process.env.CASHFREE_ENV || 'sandbox');
-console.log('BOOKING_SERVICE_URL:', BOOKING_SERVICE_URL);
 
-// ─── Cashfree SDK (real gateway — shows Card / UPI / Net Banking / Wallet) ───
+// ─── Cashfree SDK (shows Card / UPI / Net Banking / Wallet) ───
 let cashfreeClient = null;
 let cashfreeAvailable = false;
 
@@ -35,13 +34,13 @@ try {
     cashfreeAvailable = true;
     console.log('✅ Cashfree SDK initialized (' + envMode + ') — Card/UPI/Banking available');
   } else {
-    console.log('⚠️  Cashfree credentials missing — running in dummy/mock mode');
+    console.log('⚠️  Cashfree credentials missing — running in dummy mode');
   }
 } catch (err) {
-  console.log('⚠️  Cashfree SDK not available — running in dummy/mock mode:', err.message);
+  console.log('⚠️  Cashfree SDK not available — running in dummy mode:', err.message);
 }
 
-// orderId → bookingRef mapping (so we can confirm the right booking after payment)
+// orderId → bookingRef mapping (confirm the right booking after payment)
 const orderBookingMap = {};
 
 // Helper: tell booking-service to mark booking Confirmed
@@ -79,7 +78,7 @@ app.get('/', (_req, res) => {
   });
 });
 
-// POST /api/v1/payments/orders — create payment order (real Cashfree or dummy fallback)
+// POST /api/v1/payments/orders — create payment order (Cashfree or dummy fallback)
 app.post('/api/v1/payments/orders', async (req, res) => {
   try {
     const { bookingRef, amount, currency, email, phone } = req.body || {};
@@ -146,7 +145,7 @@ app.post('/api/v1/payments/orders', async (req, res) => {
   }
 });
 
-// POST /api/v1/payments/orders/:id/process — process payment (dummy success → booking Confirmed)
+// POST /api/v1/payments/orders/:id/process — process payment → booking Confirmed
 app.post('/api/v1/payments/orders/:id/process', async (req, res) => {
   try {
     const { scenario = 'success' } = req.body || {};
