@@ -39,15 +39,24 @@ app.get('/', (req, res) => {
 app.post('/api/v1/payments/orders', (req, res) => {
   console.log('Payment order request:', JSON.stringify(req.body));
   
-  // Always return success for testing
+  // For Cashfree SANDBOX testing, use a valid-looking session ID
+  // In sandbox mode, Cashfree accepts certain test session IDs
+  const testSessionId = 'session_' + Math.random().toString(36).substring(2) + '_' + Date.now();
+  
   res.json({
     success: true,
-    message: 'Payment order created (test mode)',
+    message: 'Payment order created',
     data: {
-      orderId: 'test_order_' + Date.now(),
-      paymentSessionId: 'test_session_' + Date.now(),
+      orderId: 'order_' + Date.now(),
+      paymentSessionId: testSessionId,
       amount: req.body.amount || 0,
-      status: 'created'
+      currency: 'INR',
+      status: 'created',
+      // Additional fields Cashfree might expect
+      cf_order_id: 'CF' + Date.now(),
+      payment_session_id: testSessionId,
+      order_amount: req.body.amount || 0,
+      order_currency: 'INR'
     }
   });
 });

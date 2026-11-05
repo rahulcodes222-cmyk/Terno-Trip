@@ -88,21 +88,12 @@ export default function PaymentModal({
       });
 
       // Step 2 — Open Cashfree checkout if session available
-      if (order?.paymentSessionId && sdkReady && window.Cashfree) {
-        const cashfree = window.Cashfree({
-          mode: 'sandbox', // change to 'production' with prod credentials
-        });
-
-        try {
-          await cashfree.checkout({
-            paymentSessionId: order.paymentSessionId,
-            redirectTarget: '_modal',
-          });
-        } catch (cfError) {
-          console.log('Cashfree checkout closed or error:', cfError);
-          // User closed the checkout or encountered error
-          // Continue to verify payment on backend in case it did process
-        }
+      // TEMPORARY: Skip Cashfree for testing
+      console.log('⚠️ TEMPORARY: Skipping Cashfree SDK for testing');
+      console.log('Payment session ID:', order?.paymentSessionId);
+      
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Step 3 — Verify payment server-side AFTER checkout completes/closes
         setStep('processing');
