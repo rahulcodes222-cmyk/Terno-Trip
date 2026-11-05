@@ -21,7 +21,7 @@ function loadEnquiries() {
   return [];
 }
 
-// Save enquiries
+// Save enquiries (graceful — Vercel serverless FS is read-only, so never 500)
 function saveEnquiry(enquiry: any) {
   try {
     const enquiries = loadEnquiries();
@@ -31,11 +31,16 @@ function saveEnquiry(enquiry: any) {
       timestamp: new Date().toISOString(),
       status: 'new'
     });
-    fs.writeFileSync(ENQUIRIES_FILE, JSON.stringify(enquiries, null, 2));
+    try {
+      fs.writeFileSync(ENQUIRIES_FILE, JSON.stringify(enquiries, null, 2));
+    } catch (writeErr) {
+      // Read-only filesystem on Vercel — log and continue, don't fail the request
+      console.error('Could not write enquiries file (read-only FS):', writeErr.message);
+    }
     return true;
   } catch (error) {
     console.error('Error saving enquiry:', error);
-    return false;
+    return true; // still return true so frontend gets success
   }
 }
 

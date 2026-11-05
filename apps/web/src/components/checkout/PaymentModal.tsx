@@ -87,14 +87,32 @@ export default function PaymentModal({
         phone: user?.email ? undefined : undefined,
       });
 
-      // Step 2 — TEMPORARY: Skip Cashfree for testing
-      console.log('⚠️ TEMPORARY: Skipping Cashfree SDK for testing');
-      console.log('Payment session ID:', order?.paymentSessionId);
-      
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Step 2 — Create order done; now open Cashfree checkout (card / UPI / wallet)
+      const sessionId = order?.paymentSessionId || order?.paymentRef;
+      if (!sessionId) {
+        throw new Error('No payment session ID received from server.');
+      }
 
-      // Step 3 — Verify payment server-side (mock verification for testing)
+      // Try real Cashfree SDK (shows Card / UPI / Net Banking / Wallet)
+      if (typeof window !== 'undefined' && window.Cashfree && sdkReady) {
+        try {
+          const cf = window.Cashfree({ mode: 'sandbox' });
+          const result = cf.checkout({
+            paymentSessionId: sessionId,
+            redirectTarget: '_blank',
+          });
+          if (result?.error) {
+            console.error('Cashfree checkout error:', result.error);
+          }
+        } catch (cfErr) {
+          console.warn('Cashfree checkout failed, falling back to dummy:', cfErr);
+        }
+      }
+
+      // Simulate processing delay (Cashfree SDK handles actual payment in popup)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Step 3 — Verify payment server-side
       setStep('processing');
       try {
         const verified = await processPayment.mutateAsync({
@@ -109,7 +127,6 @@ export default function PaymentModal({
         }
       } catch (verifyErr) {
         console.log('Payment verification pending or failed:', verifyErr);
-        // Fall through to error state
         throw new Error('Payment verification failed. Please contact support.');
       }
       
