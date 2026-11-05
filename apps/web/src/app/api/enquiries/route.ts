@@ -35,7 +35,8 @@ function saveEnquiry(enquiry: any) {
       fs.writeFileSync(ENQUIRIES_FILE, JSON.stringify(enquiries, null, 2));
     } catch (writeErr) {
       // Read-only filesystem on Vercel — log and continue, don't fail the request
-      console.error('Could not write enquiries file (read-only FS):', writeErr.message);
+      const msg = writeErr instanceof Error ? writeErr.message : String(writeErr);
+      console.error('Could not write enquiries file (read-only FS):', msg);
     }
     return true;
   } catch (error) {
