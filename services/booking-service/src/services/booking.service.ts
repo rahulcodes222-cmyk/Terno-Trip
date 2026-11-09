@@ -184,7 +184,8 @@ async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void>
         }),
         travellersCount: booking.travellers?.length ?? 1,
         totalAmount: booking.totalAmount,
-        paymentId: "Direct", // Direct booking — no payment gateway transaction ID
+        // paymentId omitted — no payment gateway transaction ID for direct bookings;
+        // the email template renders nothing for this row when the field is absent.
       }),
       signal: AbortSignal.timeout(5000),
     });

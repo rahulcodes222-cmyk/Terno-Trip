@@ -175,20 +175,29 @@ export async function decrementSeats(
     );
 
     if (dateEntry) {
-      // Use per-date seats if available
-      if (dateEntry.availableSeats < seats) {
-        return null; // Not enough seats for this date
-      }
-
-      // Decrement seats for this date and global count atomically
+      // Decrement seats for this date and global count atomically.
+      // The $gte guard in the filter enforces availability at commit time,
+      // preventing a TOCTOU race where two concurrent requests both pass the
+      // in-memory check and both proceed to decrement.
       const result = await Trip.findOneAndUpdate(
-        { _id: tripId, "seatsByStartDate.startDate": new Date(dateISO) },
+        {
+          _id: tripId,
+          "seatsByStartDate.startDate": new Date(dateISO),
+          "seatsByStartDate.$.availableSeats": { $gte: seats },
+        },
         { $inc: { "seatsByStartDate.$.availableSeats": -seats, availableSeats: -seats } },
         { new: true }
       ).lean();
 
-      // If all global seats are now gone, mark the trip as inactive
-      if (result && (result as unknown as ITripDocument).availableSeats <= 0) {
+      // result is null when the atomic $gte guard rejected the write (not enough seats)
+      if (!result) return null;
+
+      // If all global seats are now gone, mark the trip as inactive.
+      // NOTE: this deactivation is a separate write. A concurrent trip-list query
+      // between the $inc commit and this write may briefly see availableSeats <= 0
+      // with isActive: true. This is an acceptable narrow window given the
+      // availability check already guards against overbooking via the atomic $gte.
+      if ((result as unknown as ITripDocument).availableSeats <= 0) {
         await Trip.findByIdAndUpdate(tripId, { isActive: false });
       }
 
