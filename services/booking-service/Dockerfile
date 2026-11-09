@@ -22,11 +22,11 @@ app.get('/health', (_req, res) => {
 
 // Root endpoint
 app.get('/', (_req, res) => {
-  res.json({
+      res.json({
     service: 'booking-service',
     version: '1.0.0',
     status: 'running',
-    endpoints: ['/health', '/api/v1/bookings', '/api/v1/bookings/my', '/api/v1/bookings/:ref']
+    endpoints: ['/health', '/api/v1/bookings', '/api/v1/bookings/my', '/api/v1/bookings/:ref', '/api/v1/admin/bookings']
   });
 });
 
@@ -101,6 +101,21 @@ app.delete('/api/v1/bookings/:id', (req, res) => {
   const booking = bookings.splice(idx, 1)[0];
   booking.status = 'Cancelled';
   res.json({ success: true, message: 'Booking cancelled successfully', data: booking });
+});
+
+// GET /api/v1/admin/bookings — Admin: all bookings
+app.get('/api/v1/admin/bookings', (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+  const total = bookings.length;
+  const data = bookings.slice(skip, skip + limit);
+  res.json({
+    success: true,
+    message: 'All bookings fetched',
+    data,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+  });
 });
 
 // POST /api/v1/internal/bookings/update-payment — Payment-service confirms booking Confirmed
