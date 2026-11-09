@@ -196,21 +196,40 @@ async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void>
 }
 
 export async function createBooking(
-
   data: CreateBookingInput,
   userId: string
 ): Promise<IBookingDocument> {
-  // 1. Validate availability and get CURRENT server-side price (never trust frontend)
-  const { pricePerPerson } = await fetchTripAvailability(
+  // 1. Check for duplicate booking — same user, same trip, same departure date, not cancelled
+  const existingBooking = await Booking.findOne({
+    userId,
+    tripId: data.tripId,
+    departureDate: new Date(data.departureDate),
+    status: { $in: ["Pending", "Confirmed"] },
+  });
+
+  if (existingBooking) {
+    throw new Error(
+      "You already have a booking for this trip on the selected date"
+    );
+  }
+
+  // 2. Validate availability and get CURRENT server-side price (never trust frontend)
+  const { pricePerPerson, availableSeats } = await fetchTripAvailability(
     data.tripId,
     data.departureDate,
     data.travellers.length
   );
 
-  // 2. Calculate server-side total amount
+  if (!availableSeats || availableSeats < data.travellers.length) {
+    throw new Error(
+      `Only ${availableSeats ?? 0} seat(s) available for this date`
+    );
+  }
+
+  // 3. Calculate server-side total amount
   const totalAmount = pricePerPerson * data.travellers.length;
 
-  // 3. Fetch trip snapshot for denormalization (best-effort)
+  // 4. Fetch trip snapshot for denormalization (best-effort)
   const tripData = await fetchTripSnapshot(data.tripId);
 
   const tripSnapshot = {
@@ -221,7 +240,7 @@ export async function createBooking(
     duration: tripData?.duration ?? 0,
   };
 
-  // 4. Create booking with server-calculated total
+  // 5. Create booking with server-calculated total
   const booking = new Booking({
     bookingRef: generateBookingRef(),
     userId,
@@ -239,11 +258,32 @@ export async function createBooking(
 
   await booking.save();
 
-  // Send booking confirmation email (user + admin) – best‑effort, ignore failures
+  // 6. Decrement seats immediately (reserve them)
+  try {
+    await fetch(`${env.TRIP_SERVICE_URL}/api/v1/internal/trips/decrement-seats`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
+      },
+      body: JSON.stringify({
+        tripId: data.tripId,
+        departureDate: data.departureDate,
+        seats: data.travellers.length,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (err) {
+    // If seat decrement fails, delete the booking and throw
+    await Booking.findByIdAndDelete(booking._id);
+    throw new Error("Failed to reserve seats. Please try again.");
+  }
+
+  // 7. Send booking confirmation email (user + admin) – best‑effort, ignore failures
   await sendBookingCreatedEmail(booking);
   console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}`);
 
-  // 5. Notify user via HTTP (cross-process — in-memory EventEmitter won't work here)
+  // 8. Notify user via HTTP (cross-process — in-memory EventEmitter won't work here)
   await notifyUser({
     userId,
     title: "Booking Received",
