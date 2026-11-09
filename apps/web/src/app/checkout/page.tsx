@@ -65,6 +65,8 @@ function CheckoutContent() {
   const [bookingError, setBookingError] = useState('');
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
 
+  const availableSeats = trip?.availableSeats ?? 0;
+
   // Sync site settings when they change
   useEffect(() => {
     const handler = () => {
@@ -212,7 +214,7 @@ function CheckoutContent() {
                     </div>
                   </div>
                 ))}
-                {fields.length < 12 && (
+                {fields.length < availableSeats && (
                   <button
                     type="button"
                     onClick={() => append({ firstName: '', lastName: '', age: undefined as unknown as number })}
@@ -220,6 +222,16 @@ function CheckoutContent() {
                   >
                     + Add Traveller
                   </button>
+                )}
+                {fields.length >= availableSeats && availableSeats > 0 && (
+                  <p className="mt-2 text-sm text-red-600 font-medium">
+                    Maximum {availableSeats} traveller(s) available for this date
+                  </p>
+                )}
+                {availableSeats === 0 && (
+                  <p className="mt-2 text-sm text-red-600 font-medium">
+                    No seats available for this date
+                  </p>
                 )}
               </div>
 
