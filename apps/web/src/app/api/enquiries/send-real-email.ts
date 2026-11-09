@@ -46,8 +46,8 @@ export async function sendRealEmail(enquiryData: any): Promise<boolean> {
             .detail { display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }
             .detail:last-child { border-bottom: none; }
             .label { width: 140px; font-size: 14px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-            .value { flex: 1; font-size: 15px; color: #111827; }
-            .value a { color: #FF6B00; text-decoration: none; font-weight: 600; }
+            .value { flex: 1; font-size: 15px; color: #111827; word-break: break-all; overflow-wrap: break-word; }
+            .value a { color: #FF6B00; text-decoration: none; font-weight: 600; word-break: break-all; overflow-wrap: break-word; }
             .action { background: #fff7ed; border: 2px solid #fed7aa; border-radius: 12px; padding: 24px; margin: 28px 0; text-align: center; }
             .action h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #9a3412; }
             .btn { display: inline-block; background: #FF6B00; color: #ffffff; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 6px 6px 0 0; }
