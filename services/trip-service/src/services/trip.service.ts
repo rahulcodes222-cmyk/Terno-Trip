@@ -180,12 +180,17 @@ export async function decrementSeats(
         return null; // Not enough seats for this date
       }
 
-      // Decrement seats for this date
+      // Decrement seats for this date and global count atomically
       const result = await Trip.findOneAndUpdate(
         { _id: tripId, "seatsByStartDate.startDate": new Date(dateISO) },
-        { $inc: { "seatsByStartDate.$.availableSeats": -seats } },
+        { $inc: { "seatsByStartDate.$.availableSeats": -seats, availableSeats: -seats } },
         { new: true }
       ).lean();
+
+      // If all global seats are now gone, mark the trip as inactive
+      if (result && (result as unknown as ITripDocument).availableSeats <= 0) {
+        await Trip.findByIdAndUpdate(tripId, { isActive: false });
+      }
 
       return result as unknown as ITripDocument | null;
     } else {

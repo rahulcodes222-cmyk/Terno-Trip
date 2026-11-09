@@ -79,7 +79,7 @@ async function fetchTripAvailability(
   tripId: string,
   departureDate: string,
   seats: number
-): Promise<{ pricePerPerson: number }> {
+): Promise<{ pricePerPerson: number; availableSeats: number }> {
   const response = await fetch(
     `${env.TRIP_SERVICE_URL}/api/v1/trips/check-availability`,
     {
@@ -107,7 +107,7 @@ async function fetchTripAvailability(
     throw new Error(json.data.message ?? "Trip is not available for the selected date/seats");
   }
 
-  return { pricePerPerson: json.data.pricePerPerson };
+  return { pricePerPerson: json.data.pricePerPerson, availableSeats: json.data.availableSeats };
 }
 
 // ─── Trip snapshot fetch ──────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void>
     console.log(`[booking-service] Booking email POST succeeded → user: ${booking.contactEmail}`);
 
   } catch (err) {
-    console.error("[booking-service] Failed to send booking‑created email:", err);
+    console.error("[booking-service] booking-email POST failed:", err);
   }
 }
 
@@ -249,8 +249,8 @@ export async function createBooking(
     departureDate: new Date(data.departureDate),
     travellers: data.travellers,
     totalAmount, // Server-calculated — never trusted from frontend
-    status: "Pending",
-    paymentStatus: "Pending",
+    status: "Confirmed",
+    paymentStatus: "Paid",
     contactEmail: data.contactEmail,
     contactPhone: data.contactPhone,
     specialRequests: data.specialRequests,
@@ -284,7 +284,7 @@ export async function createBooking(
     await sendBookingCreatedEmail(booking);
     console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}`);
   } catch (err) {
-    console.error("[booking-service] Failed to send booking email:", err.message);
+    console.error("[booking-service] Failed to send booking email:", (err as Error).message);
     // Don't throw — booking is already created, email is best-effort
   }
 
@@ -293,7 +293,7 @@ export async function createBooking(
     await notifyUser({
       userId,
       title: "Booking Received",
-      message: `Your booking for ${tripSnapshot.title} has been received and is pending payment. Ref: ${booking.bookingRef}`,
+      message: `Your booking for ${tripSnapshot.title} has been confirmed. Ref: ${booking.bookingRef}`,
       type: "booking",
       metadata: {
         bookingId: String(booking._id),
@@ -302,10 +302,9 @@ export async function createBooking(
       },
     });
   } catch (err) {
-    console.error("[booking-service] Failed to send notification:", err.message);
+    console.error("[booking-service] Failed to send notification:", (err as Error).message);
     // Don't throw — booking is already created, notification is best-effort
   }
-  });
 
   return booking;
 }

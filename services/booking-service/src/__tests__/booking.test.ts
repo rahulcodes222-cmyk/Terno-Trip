@@ -17,29 +17,36 @@ const mockBooking = {
   travellers: [{ firstName: "Rahul", lastName: "Sharma", age: 25 }],
   travellersCount: 1,
   totalAmount: 9449, // 8999 * 1 + 5% tax = 9449
-  status: "Pending",
-  paymentStatus: "Pending",
+  status: "Confirmed",
+  paymentStatus: "Paid",
   contactEmail: "rahul@example.com",
   contactPhone: "+919876543210",
   save: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock("../models/Booking.js", () => ({
-  Booking: {
-    create: vi.fn().mockResolvedValue(mockBooking),
-    find: vi.fn().mockReturnValue({
-      sort: vi.fn().mockReturnThis(),
-      skip: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      lean: vi.fn().mockResolvedValue([mockBooking]),
-    }),
-    findOne: vi.fn().mockResolvedValue(mockBooking),
-    findById: vi.fn().mockResolvedValue({
+  Booking: Object.assign(
+    vi.fn().mockImplementation(() => ({
       ...mockBooking,
       save: vi.fn().mockResolvedValue(undefined),
-    }),
-    countDocuments: vi.fn().mockResolvedValue(1),
-  },
+    })),
+    {
+      create: vi.fn().mockResolvedValue(mockBooking),
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        skip: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        lean: vi.fn().mockResolvedValue([mockBooking]),
+      }),
+      findOne: vi.fn().mockResolvedValue(mockBooking),
+      findById: vi.fn().mockResolvedValue({
+        ...mockBooking,
+        save: vi.fn().mockResolvedValue(undefined),
+      }),
+      findByIdAndDelete: vi.fn().mockResolvedValue(null),
+      countDocuments: vi.fn().mockResolvedValue(1),
+    }
+  ),
 }));
 
 vi.mock("../config/env.js", () => ({
@@ -88,6 +95,10 @@ describe("Booking Controller", () => {
 
   describe("createBooking", () => {
     it("returns 201 with bookingRef on success", async () => {
+      // First findOne call is the duplicate check — return null (no existing booking)
+      const { Booking } = await import("../models/Booking.js");
+      (Booking.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
       const { createBooking } = await import("../controllers/booking.controller.js");
       const { req, res, next } = mockReqRes({
         tripId: "trip123",
@@ -101,6 +112,9 @@ describe("Booking Controller", () => {
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ success: true })
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: "Confirmed" }) })
       );
     });
   });
@@ -120,7 +134,8 @@ describe("Booking Controller", () => {
   describe("cancelBooking", () => {
     it("cancels booking and returns 200", async () => {
       const { Booking } = await import("../models/Booking.js");
-      (Booking.findById as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      // cancelBooking service uses findOne({ _id, userId })
+      (Booking.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ...mockBooking,
         userId: "user123",
         status: "Pending",
@@ -133,19 +148,16 @@ describe("Booking Controller", () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
-    it("returns 403 if booking belongs to different user", async () => {
+    it("returns 404 if booking belongs to different user", async () => {
       const { Booking } = await import("../models/Booking.js");
-      (Booking.findById as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ...mockBooking,
-        userId: "differentUser",
-        status: "Pending",
-        save: vi.fn().mockResolvedValue(undefined),
-      });
+      // When userId doesn't match, findOne returns null (DB enforces ownership via query)
+      (Booking.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
 
       const { cancelBooking } = await import("../controllers/booking.controller.js");
       const { req, res, next } = mockReqRes({}, { id: "booking123" });
       await cancelBooking(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(403);
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      expect(res.status).not.toHaveBeenCalledWith(200);
     });
   });
 });
