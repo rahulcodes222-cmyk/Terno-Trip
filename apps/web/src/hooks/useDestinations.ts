@@ -102,7 +102,7 @@ export function getDestinations(): Destination[] {
     // Backward-compat: migrate old single-image entries to images array
     return parsed.map((d) => ({
       ...d,
-      images: Array.isArray(d.images) ? d.images : d.image ? [d.image] : [],
+      images: Array.isArray(d.images) ? d.images : (d as any).image ? [(d as any).image] : [],
     }));
   } catch {
     return DEFAULT_DESTINATIONS;

@@ -1,10 +1,10 @@
-// REAL EMAIL SOLUTION - Using notification service SMTP credentials
+// REAL EMAIL SOLUTION - Using Cashfree SMTP credentials
 // These credentials are already working in the notification service
 
 export async function sendRealEmail(enquiryData: any): Promise<boolean> {
   try {
     const { name, phone, email, destination, submittedAt } = enquiryData;
-    
+
     // Use the SAME credentials as notification service
     const smtpConfig = {
       host: 'smtp.gmail.com',
@@ -12,16 +12,16 @@ export async function sendRealEmail(enquiryData: any): Promise<boolean> {
       secure: false,
       auth: {
         user: 'adityashukla727@gmail.com', // From notification service .env
-        pass: 'drwsyyvvoqgvvwtu' // App Password from notification service .env
-      }
+        pass: 'drwsyyvvoqgvvwtu', // App Password from notification service .env
+      },
     };
-    
+
     const adminEmail = 'rahulcodes222@gmail.com'; // From notification service .env
-    
+
     // Import nodemailer
     const nodemailer = await import('nodemailer');
     const transporter = nodemailer.createTransport(smtpConfig);
-    
+
     const mailOptions = {
       from: '"Terno Trip" <enquiries@terno-trip.com>',
       to: adminEmail,
@@ -50,7 +50,7 @@ export async function sendRealEmail(enquiryData: any): Promise<boolean> {
             .value a { color: #FF6B00; text-decoration: none; font-weight: 600; }
             .action { background: #fff7ed; border: 2px solid #fed7aa; border-radius: 12px; padding: 24px; margin: 28px 0; text-align: center; }
             .action h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #9a3412; }
-            .btn { display: inline-block; background: #FF6B00; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 6px 6px 0 0; }
+            .btn { display: inline-block; background: #FF6B00; color: #ffffff; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 6px 6px 0 0; }
             .btn.email { background: #10b981; }
             .footer { padding: 24px 40px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px; }
             .footer p { margin: 4px 0; }
@@ -120,17 +120,17 @@ Enquiry ID: TQ-${Date.now().toString().slice(-6)}
 Action Required: Please contact customer within 24 hours.
       `,
     };
-    
+
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ REAL EMAIL SENT! Message ID:', info.messageId);
     console.log('   To:', adminEmail);
     console.log('   From:', mailOptions.from);
     console.log('   Subject:', mailOptions.subject);
     return true;
-    
+
   } catch (error: any) {
     console.error('❌ REAL EMAIL FAILED:', error.message);
-    
+
     if (error.code === 'EAUTH') {
       console.log('');
       console.log('=== GMAIL AUTHENTICATION ERROR ===');
@@ -141,7 +141,7 @@ Action Required: Please contact customer within 24 hours.
       console.log('3. Generate new App Password');
       console.log('4. Update the password in this function');
     }
-    
+
     return false;
   }
 }
