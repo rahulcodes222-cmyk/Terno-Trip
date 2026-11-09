@@ -184,7 +184,7 @@ async function sendBookingCreatedEmail(booking: IBookingDocument): Promise<void>
         }),
         travellersCount: booking.travellers?.length ?? 1,
         totalAmount: booking.totalAmount,
-        // No paymentId yet – booking is pending
+        paymentId: "Direct", // Direct booking — no payment gateway transaction ID
       }),
       signal: AbortSignal.timeout(5000),
     });
@@ -425,32 +425,12 @@ export async function updateBookingPaymentStatus(
     booking = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
   }
 
-  // If payment was successful, decrement seats in trip-service
-  if (booking && paymentStatus === "Paid") {
-    try {
-      const bookingData = booking as unknown as IBookingDocument;
-      await fetch(
-        `${env.TRIP_SERVICE_URL}/api/v1/internal/trips/decrement-seats`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-internal-secret": env.INTERNAL_SERVICE_SECRET,
-          },
-          body: JSON.stringify({
-            tripId: bookingData.tripId,
-            departureDate: bookingData.departureDate.toISOString(),
-            seats: bookingData.travellers.length,
-          }),
-          signal: AbortSignal.timeout(5000),
-        }
-      );
-      console.log(`[booking-service] Seats decremented for trip ${bookingData.tripId}`);
-    } catch (err) {
-      console.error("[booking-service] Failed to decrement seats:", err);
-      // Don't throw — booking is already confirmed, seats will eventually be deducted
-    }
-  }
+  // NOTE: Seat decrement is intentionally NOT performed here.
+  // Seats are already decremented atomically during createBooking (step 6).
+  // Performing a second decrement here would double-deduct seats for direct
+  // (non-payment-gateway) bookings that are created as Confirmed/Paid immediately.
+  // If a future payment gateway flow requires deferred seat decrement, re-enable
+  // this block only for bookings that were originally created as Pending.
 
   return booking as unknown as IBookingDocument | null;
 }

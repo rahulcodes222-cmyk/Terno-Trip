@@ -206,15 +206,27 @@ export async function decrementSeats(
         { new: true }
       ).lean();
 
+      // If all global seats are now gone, mark the trip as inactive
+      if (result && (result as unknown as ITripDocument).availableSeats <= 0) {
+        await Trip.findByIdAndUpdate(tripId, { isActive: false });
+      }
+
       return result as unknown as ITripDocument | null;
     }
   } else {
     // Decrement global seats (legacy)
-    return Trip.findOneAndUpdate(
+    const result = await Trip.findOneAndUpdate(
       { _id: tripId, availableSeats: { $gte: seats } },
       { $inc: { availableSeats: -seats } },
       { new: true }
-    ).lean() as Promise<ITripDocument | null>;
+    ).lean();
+
+    // If all global seats are now gone, mark the trip as inactive
+    if (result && (result as unknown as ITripDocument).availableSeats <= 0) {
+      await Trip.findByIdAndUpdate(tripId, { isActive: false });
+    }
+
+    return result as unknown as ITripDocument | null;
   }
 }
 
