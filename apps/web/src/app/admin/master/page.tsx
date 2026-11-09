@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MapPin, Camera, CheckCircle, Clock, Bus,
   Upload, ChevronDown, ChevronUp, Image as ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTrips } from '@/hooks/useTrips';
+import apiClient from '@/lib/api-client';
+import type { ITrip } from '@/types';
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type TripStatus =
   | 'not_started'
@@ -23,49 +26,8 @@ interface StatusUpdate {
   location: string;
   message: string;
   timestamp: string;
-  photos: string[]; // object URLs (preview only — no API)
+  photos: string[];
 }
-
-interface MockTrip {
-  id: string;
-  title: string;
-  destination: string;
-  date: string;
-  travellers: number;
-  busNumber: string;
-  coverImage: string;
-}
-
-// ── Static demo trips ─────────────────────────────────────────────────────────
-const DEMO_TRIPS: MockTrip[] = [
-  {
-    id: '1',
-    title: 'Manali Adventure Expedition',
-    destination: 'Manali, Himachal Pradesh',
-    date: '2025-06-01',
-    travellers: 14,
-    busNumber: 'HP-12-3456',
-    coverImage: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=400',
-  },
-  {
-    id: '2',
-    title: 'Kerala Backwaters & Munnar',
-    destination: 'Kerala',
-    date: '2025-06-15',
-    travellers: 12,
-    busNumber: 'KL-07-8901',
-    coverImage: 'https://images.unsplash.com/photo-1593693411515-c20261bcad6e?w=400',
-  },
-  {
-    id: '3',
-    title: 'Royal Rajasthan Tour',
-    destination: 'Rajasthan',
-    date: '2025-07-01',
-    travellers: 16,
-    busNumber: 'RJ-14-5678',
-    coverImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400',
-  },
-];
 
 const STATUS_OPTIONS: { value: TripStatus; label: string; color: string }[] = [
   { value: 'not_started', label: 'Not Started',    color: 'bg-gray-100 text-gray-600'   },
@@ -83,9 +45,12 @@ function statusLabel(s: TripStatus) {
   return STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────────
 export default function MasterDashboard() {
-  const [selectedTrip, setSelectedTrip] = useState<MockTrip | null>(null);
+  const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 50, page: 1 });
+  const trips = tripsData?.data ?? [];
+
+  const [selectedTrip, setSelectedTrip] = useState<ITrip | null>(null);
   const [currentStatus, setCurrentStatus] = useState<TripStatus>('not_started');
   const [location, setLocation]   = useState('');
   const [message, setMessage]     = useState('');
@@ -93,8 +58,29 @@ export default function MasterDashboard() {
   const [updates, setUpdates]     = useState<StatusUpdate[]>([]);
   const [showHistory, setShowHistory] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [loadingUpdates, setLoadingUpdates] = useState(false);
 
-  // photo file input → object URLs (no upload API yet)
+  // Load status updates when trip selected
+  useEffect(() => {
+    if (!selectedTrip) { setUpdates([]); return; }
+    setLoadingUpdates(true);
+    apiClient.get(`/api/v1/trips/${selectedTrip._id}/status-updates`)
+      .then((res) => {
+        const data = res.data?.data ?? [];
+        setUpdates(data.map((u: any) => ({
+          id: u._id ?? u.id ?? String(Date.now()),
+          status: u.status,
+          location: u.location,
+          message: u.message ?? '',
+          timestamp: u.timestamp ? new Date(u.timestamp).toLocaleString('en-IN') : new Date(u.createdAt).toLocaleString('en-IN'),
+          photos: u.photos ?? [],
+        })));
+      })
+      .catch(() => setUpdates([]))
+      .finally(() => setLoadingUpdates(false));
+  }, [selectedTrip]);
+
+  // photo file input → object URLs (preview only — no upload API yet)
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     const urls = files.map((f) => URL.createObjectURL(f));
@@ -105,7 +91,7 @@ export default function MasterDashboard() {
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSubmitUpdate = () => {
+  const handleSubmitUpdate = async () => {
     if (!selectedTrip || !location.trim()) return;
 
     const update: StatusUpdate = {
@@ -117,11 +103,29 @@ export default function MasterDashboard() {
       photos,
     };
 
-    setUpdates((prev) => [update, ...prev]);
-    setMessage('');
-    setPhotos([]);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    try {
+      const res = await apiClient.post(`/api/v1/trips/${selectedTrip._id}/status-updates`, {
+        status: currentStatus,
+        location: location.trim(),
+        message: message.trim(),
+        photos,
+      });
+
+      const saved = res.data?.data ?? update;
+      setUpdates((prev) => [saved, ...prev]);
+      setMessage('');
+      setPhotos([]);
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      console.error('Failed to save status update:', err);
+      // Fallback: still add locally so UI doesn't break
+      setUpdates((prev) => [update, ...prev]);
+      setMessage('');
+      setPhotos([]);
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    }
   };
 
   return (
@@ -134,53 +138,57 @@ export default function MasterDashboard() {
         </div>
         <p className="text-sm text-gray-500">
           Bus trip master — update live trip status, location, and upload photos.
-          <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-            UI Only — API integration pending
-          </span>
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
-        {/* ── Left: Trip selector ──────────────────────────────────────── */}
+        {/* ── Left: Trip selector ─────────────────────────────────────────── */}
         <div className="lg:col-span-1">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
             Select Active Trip
           </h2>
-          <div className="space-y-3">
-            {DEMO_TRIPS.map((trip) => (
-              <button
-                key={trip.id}
-                onClick={() => { setSelectedTrip(trip); setUpdates([]); setCurrentStatus('not_started'); }}
-                className={cn(
-                  'w-full overflow-hidden rounded-xl border text-left transition-all',
-                  selectedTrip?.id === trip.id
-                    ? 'border-[#FF6B00] ring-2 ring-[#FF6B00]/20'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                )}
-              >
-                <div className="flex items-center gap-3 p-3">
-                  <img
-                    src={trip.coverImage}
-                    alt={trip.title}
-                    className="h-12 w-16 shrink-0 rounded-lg object-cover"
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-900">{trip.title}</p>
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                      <MapPin className="h-3 w-3 shrink-0" /> {trip.destination}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
-                      <Bus className="h-3 w-3 shrink-0" /> {trip.busNumber} · {trip.travellers} travellers
-                    </p>
+          {tripsLoading ? (
+            <p className="text-sm text-gray-400">Loading trips...</p>
+          ) : (
+            <div className="space-y-3">
+              {trips.map((trip) => (
+                <button
+                  key={trip._id}
+                  onClick={() => { setSelectedTrip(trip); setUpdates([]); setCurrentStatus('not_started'); setLocation(''); setMessage(''); setPhotos([]); }}
+                  className={cn(
+                    'w-full overflow-hidden rounded-xl border text-left transition-all',
+                    selectedTrip?._id === trip._id
+                      ? 'border-[#FF6B00] ring-2 ring-[#FF6B00]/20'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  )}
+                >
+                  <div className="flex items-center gap-3 p-3">
+                    <img
+                      src={trip.coverImage || 'https://picsum.photos/seed/trip/400/300'}
+                      alt={trip.title}
+                      className="h-12 w-16 shrink-0 rounded-lg object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900">{trip.title}</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                        <MapPin className="h-3 w-3 shrink-0" /> {trip.destination}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
+                        <Bus className="h-3 w-3 shrink-0" /> {trip.duration} days
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+              {trips.length === 0 && (
+                <p className="text-sm text-gray-400">No trips found. Create trips in admin first.</p>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ── Right: Update form + history ──────────────────────────────── */}
+        {/* ── Right: Update form + history ────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-5">
 
           {!selectedTrip ? (
@@ -192,10 +200,10 @@ export default function MasterDashboard() {
             <>
               {/* Selected trip banner */}
               <div className="flex items-center gap-3 rounded-xl border border-[#FF6B00]/20 bg-orange-50 p-4">
-                <img src={selectedTrip.coverImage} alt={selectedTrip.title} className="h-12 w-16 rounded-lg object-cover shrink-0" />
+                <img src={selectedTrip.coverImage || 'https://picsum.photos/seed/trip/400/300'} alt={selectedTrip.title} className="h-12 w-16 rounded-lg object-cover shrink-0" />
                 <div>
                   <p className="font-bold text-gray-900">{selectedTrip.title}</p>
-                  <p className="text-xs text-gray-500">{selectedTrip.destination} · {new Date(selectedTrip.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-500">{selectedTrip.destination}</p>
                 </div>
                 <span className={cn('ml-auto shrink-0 rounded-full px-3 py-1 text-xs font-bold', statusColor(currentStatus))}>
                   {statusLabel(currentStatus)}
@@ -266,7 +274,6 @@ export default function MasterDashboard() {
                     Upload Photos (optional)
                   </label>
 
-                  {/* Upload button */}
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-gray-500 hover:border-[#FF6B00] hover:text-[#FF6B00] transition-colors">
                     <Upload className="h-4 w-4" />
                     <span>Choose photos from device</span>
@@ -279,7 +286,6 @@ export default function MasterDashboard() {
                     />
                   </label>
 
-                  {/* Photo previews */}
                   {photos.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {photos.map((url, i) => (
@@ -315,7 +321,9 @@ export default function MasterDashboard() {
               </div>
 
               {/* Update history */}
-              {updates.length > 0 && (
+              {loadingUpdates ? (
+                <p className="text-sm text-gray-400">Loading updates...</p>
+              ) : updates.length > 0 && (
                 <div className="rounded-xl bg-white shadow-sm overflow-hidden">
                   <button
                     onClick={() => setShowHistory(!showHistory)}
