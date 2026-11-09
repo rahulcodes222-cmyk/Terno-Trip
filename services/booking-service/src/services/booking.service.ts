@@ -407,15 +407,18 @@ export async function getAllBookings(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
 
-  if (status && status !== "All") {
-    query.status = status;
+  // Status filter — trimmed, case-insensitive match
+  if (status && status.trim() && status.trim() !== "All") {
+    query.status = status.trim();
   }
 
-  if (search) {
+  // Search filter — matches bookingRef, contactEmail, tripSnapshot.title
+  if (search && search.trim()) {
+    const searchTrimmed = search.trim();
     query.$or = [
-      { bookingRef:   { $regex: search, $options: "i" } },
-      { contactEmail: { $regex: search, $options: "i" } },
-      { "tripSnapshot.title": { $regex: search, $options: "i" } },
+      { bookingRef: { $regex: searchTrimmed, $options: "i" } },
+      { contactEmail: { $regex: searchTrimmed, $options: "i" } },
+      { "tripSnapshot.title": { $regex: searchTrimmed, $options: "i" } },
     ];
   }
 
