@@ -119,18 +119,6 @@ Enquiry ID: TQ-${Date.now().toString().slice(-6)}
 
 Action Required: Please contact customer within 24 hours.
       `,
-      text: `
-NEW ENQUIRY - Terno Trip
-=======================
-
-Name: ${name}
-Phone: ${phone}
-Email: ${email || 'Not provided'}
-Destination: ${destination || 'Not specified'}
-Time: ${submittedAt}
-
-Action Required: Please contact customer within 24 hours.
-      `
     };
     
     const info = await transporter.sendMail(mailOptions);
