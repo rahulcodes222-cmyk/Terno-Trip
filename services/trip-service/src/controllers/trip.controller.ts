@@ -6,6 +6,7 @@ import {
 } from "@terno/shared";
 import mongoose from "mongoose";
 import { Trip } from "../models/Trip.js";
+import { TripStatusUpdate } from "../models/TripStatusUpdate.js";
 import * as tripService from "../services/trip.service.js";
 
 export async function listTrips(
@@ -281,6 +282,46 @@ export async function getTripByIdInternal(
       return;
     }
     res.status(200).json(createApiResponse(trip, "Trip fetched"));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Trip Status Updates (Master Dashboard) ──────────────────────────────────
+
+export async function getTripStatusUpdates(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    const updates = await TripStatusUpdate.find({ tripId: id })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.status(200).json(createApiResponse(updates, "Status updates fetched"));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createTripStatusUpdate(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { status, location, message, photos } = req.body;
+    const update = await TripStatusUpdate.create({
+      tripId: id,
+      status,
+      location,
+      message: message || "",
+      photos: photos || [],
+      timestamp: new Date(),
+    });
+    res.status(201).json(createApiResponse(update, "Status update created"));
   } catch (err) {
     next(err);
   }

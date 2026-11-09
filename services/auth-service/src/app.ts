@@ -15,9 +15,21 @@ app.use(helmet());
 
 // ─── Global Middleware ────────────────────────────────────────────────────────
 
+const allowedOrigins = [
+  env.FRONTEND_URL,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (_origin, callback) => {
+      if (!allowedOrigins.includes(_origin ?? "")) {
+        callback(new Error("Not allowed by CORS"));
+        return;
+      }
+      callback(null, true);
+    },
     credentials: true,
   })
 );

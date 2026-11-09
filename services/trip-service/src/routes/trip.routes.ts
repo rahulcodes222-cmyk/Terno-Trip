@@ -16,6 +16,8 @@ import {
   updateAvailability,
   getTripByIdAdmin,
   getTripByIdInternal,
+  getTripStatusUpdates,
+  createTripStatusUpdate,
 } from "../controllers/trip.controller.js";
 
 const router = Router();
@@ -32,6 +34,10 @@ router.post("/api/v1/trips/check-availability", checkAvailability);
 router.post("/api/v1/internal/trips/decrement-seats", serviceAuth, decrementSeats);
 router.post("/api/v1/internal/trips/increment-seats", serviceAuth, incrementSeats);
 router.get("/api/v1/internal/trips/:id", serviceAuth, getTripByIdInternal);
+
+// ─── Trip Status Updates (Master Dashboard) ────────────────────────────────────
+router.get("/api/v1/trips/:id/status-updates", getTripStatusUpdates);
+router.post("/api/v1/trips/:id/status-updates", createTripStatusUpdate);
 
 // ─── Admin Routes (require x-user-role: admin injected by API Gateway) ─────────
 router.get("/api/v1/admin/trips/:id", adminAuth, getTripByIdAdmin);

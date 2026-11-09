@@ -28,59 +28,96 @@ export async function sendRealEmail(enquiryData: any): Promise<boolean> {
       subject: `📞 NEW ENQUIRY: ${name} - Terno Trip`,
       html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>New Enquiry — Terno Trip</title>
           <style>
-            body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #FF6B00; color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center; }
-            .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 10px 10px; }
-            .details { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
-            .detail { padding: 5px 0; border-bottom: 1px solid #eee; }
-            .label { font-weight: bold; color: #666; }
-            .cta { text-align: center; margin: 20px 0; }
-            .button { display: inline-block; background: #FF6B00; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-            .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2937; background: #f3f4f6; }
+            .container { max-width: 640px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #FF6B00 0%, #ff8c42 100%); color: #ffffff; padding: 32px 40px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+            .header p { margin: 8px 0 0; font-size: 15px; opacity: 0.9; }
+            .content { padding: 40px; }
+            .content p { margin: 0 0 24px; font-size: 15px; color: #374151; }
+            .details { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 24px 0; }
+            .detail { display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }
+            .detail:last-child { border-bottom: none; }
+            .label { width: 140px; font-size: 14px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+            .value { flex: 1; font-size: 15px; color: #111827; }
+            .value a { color: #FF6B00; text-decoration: none; font-weight: 600; }
+            .action { background: #fff7ed; border: 2px solid #fed7aa; border-radius: 12px; padding: 24px; margin: 28px 0; text-align: center; }
+            .action h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #9a3412; }
+            .btn { display: inline-block; background: #FF6B00; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 6px 6px 0 0; }
+            .btn.email { background: #10b981; }
+            .footer { padding: 24px 40px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px; }
+            .footer p { margin: 4px 0; }
+            .badge { display: inline-block; background: #ffedd5; color: #9a3412; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-top: 8px; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>📞 New Enquiry Received</h1>
-            <p>Terno Trip Website</p>
-          </div>
-          <div class="content">
-            <p>Hello Admin,</p>
-            <p>A new enquiry has been submitted via the Terno Trip website.</p>
-            
-            <div class="details">
-              <div class="detail">
-                <span class="label">Name:</span> ${name}
+          <div class="container">
+            <div class="header">
+              <h1>📞 New Enquiry Received</h1>
+              <p>Terno Trip Website</p>
+            </div>
+            <div class="content">
+              <p>Hello Admin,</p>
+              <p>A new travel enquiry has been submitted on the Terno Trip website. Please review the details below and respond within 24 hours.</p>
+
+              <div class="details">
+                <div class="detail">
+                  <span class="label">Name</span>
+                  <span class="value">${name}</span>
+                </div>
+                <div class="detail">
+                  <span class="label">Phone</span>
+                  <span class="value"><a href="tel:${phone}">${phone}</a></span>
+                </div>
+                <div class="detail">
+                  <span class="label">Email</span>
+                  <span class="value">${email || '<em style="color:#9ca3af;">Not provided</em>'}</span>
+                </div>
+                <div class="detail">
+                  <span class="label">Destination</span>
+                  <span class="value">${destination || '<em style="color:#9ca3af;">Not specified</em>'}</span>
+                </div>
+                <div class="detail">
+                  <span class="label">Submitted</span>
+                  <span class="value">${submittedAt}</span>
+                </div>
               </div>
-              <div class="detail">
-                <span class="label">Phone:</span> <a href="tel:${phone}">${phone}</a>
-              </div>
-              <div class="detail">
-                <span class="label">Email:</span> ${email || '<em>Not provided</em>'}
-              </div>
-              <div class="detail">
-                <span class="label">Destination:</span> ${destination || '<em>Not specified</em>'}
-              </div>
-              <div class="detail">
-                <span class="label">Time:</span> ${submittedAt}
+
+              <div class="action">
+                <h3>Action Required</h3>
+                <p style="margin:0 0 16px;font-size:14px;color:#4b5563;">Please contact the customer within 24 hours.</p>
+                <a href="tel:${phone}" class="btn">📞 Call Now</a>
+                ${email ? `<a href="mailto:${email}" class="btn email">✉️ Email</a>` : ''}
+                <span class="badge">Enquiry ID: TQ-${Date.now().toString().slice(-6)}</span>
               </div>
             </div>
-            
-            <div class="cta">
-              <p><strong>Action Required:</strong> Please contact within 24 hours</p>
-              <a href="tel:${phone}" class="button">📞 Call Now</a>
-              ${email ? `<a href="mailto:${email}" class="button" style="margin-left: 10px; background: #4CAF50;">✉️ Email</a>` : ''}
-            </div>
-            
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Terno Trip</p>
+              <p>© ${new Date().getFullYear()} Terno Trip. All rights reserved.</p>
+              <p>This is an automated enquiry notification. Please do not reply to this email.</p>
             </div>
           </div>
         </body>
         </html>
+      `,
+      text: `
+NEW ENQUIRY - Terno Trip
+=========================
+
+Name: ${name}
+Phone: ${phone}
+Email: ${email || 'Not provided'}
+Destination: ${destination || 'Not specified'}
+Time: ${submittedAt}
+Enquiry ID: TQ-${Date.now().toString().slice(-6)}
+
+Action Required: Please contact customer within 24 hours.
       `,
       text: `
 NEW ENQUIRY - Terno Trip

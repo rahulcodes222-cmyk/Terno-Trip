@@ -116,12 +116,12 @@ export default function HomePage() {
         <SectionHeader eyebrow="Top picks across India" title="Popular Destinations" sub="From mountains to beaches — India has it all." link="/trips" linkLabel="View all packages ↗" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {destinations.slice(0, 4).map((d) => (
-            <DestinationCard key={d.id} image={d.image} name={d.name} subtitle={d.subtitle} badge={d.badge} />
+            <DestinationCard key={d.id} images={d.images} name={d.name} subtitle={d.subtitle} badge={d.badge} />
           ))}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
           {destinations.slice(4, 8).map((d) => (
-            <DestinationCard key={d.id} image={d.image} name={d.name} subtitle={d.subtitle} badge={d.badge} />
+            <DestinationCard key={d.id} images={d.images} name={d.name} subtitle={d.subtitle} badge={d.badge} />
           ))}
         </div>
       </Section>

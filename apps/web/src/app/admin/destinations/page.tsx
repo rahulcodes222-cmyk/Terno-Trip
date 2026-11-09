@@ -11,7 +11,7 @@ type BadgeValue = (typeof BADGES)[number];
 export default function AdminDestinationsPage() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<Partial<Destination & { badgeValue: BadgeValue }>>({});
+  const [form, setForm] = useState<Partial<Destination & { badgeValue: BadgeValue } & { images: string[] }>>({});
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function AdminDestinationsPage() {
 
   const startNew = () => {
     setEditingId('__new__');
-    setForm({ badgeValue: 'None' });
+    setForm({ badgeValue: 'None', images: [''] });
   };
 
   const startEdit = (d: Destination) => {
@@ -28,6 +28,7 @@ export default function AdminDestinationsPage() {
     setForm({
       ...d,
       badgeValue: (d.badge ?? 'None') as BadgeValue,
+      images: d.images ?? [],
     });
   };
 
@@ -38,11 +39,12 @@ export default function AdminDestinationsPage() {
 
   const handleSave = () => {
     const badge = form.badgeValue === 'None' ? undefined : form.badgeValue as Destination['badge'];
+    const images = (form.images ?? ['']).filter((img) => img.trim() !== '');
     const record: Destination = {
       id: editingId === '__new__' ? Date.now().toString() : (editingId ?? Date.now().toString()),
       name: form.name ?? '',
       subtitle: form.subtitle ?? '',
-      image: form.image ?? '',
+      images: images.length > 0 ? images : ['https://picsum.photos/seed/dest/600/400'],
       ...(badge ? { badge } : {}),
     };
 
@@ -70,6 +72,26 @@ export default function AdminDestinationsPage() {
 
   const updateForm = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const updateImage = (index: number, value: string) => {
+    setForm((prev) => {
+      const imgs = [...(prev.images ?? [])];
+      imgs[index] = value;
+      return { ...prev, images: imgs };
+    });
+  };
+
+  const addImage = () => {
+    setForm((prev) => ({ ...prev, images: [...(prev.images ?? []), ''] }));
+  };
+
+  const removeImage = (index: number) => {
+    setForm((prev) => {
+      const imgs = [...(prev.images ?? [])];
+      imgs.splice(index, 1);
+      return { ...prev, images: imgs };
+    });
   };
 
   return (
@@ -126,23 +148,43 @@ export default function AdminDestinationsPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#FF6B00] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
               />
             </div>
-            {/* Image URL */}
+            {/* Images (multiple) */}
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-gray-700">Image URL *</label>
-              <input
-                type="text"
-                value={form.image ?? ''}
-                onChange={(e) => updateForm('image', e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#FF6B00] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
-              />
-              {form.image && (
-                <img
-                  src={form.image}
-                  alt="Preview"
-                  className="mt-2 h-12 w-20 rounded-lg object-cover"
-                />
-              )}
+              <div className="mb-1 block text-sm font-medium text-gray-700">Images (add 2-3 for slideshow)</div>
+              <div className="space-y-2">
+                {(form.images ?? ['']).map((img, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={img}
+                      onChange={(e) => updateImage(idx, e.target.value)}
+                      placeholder={`Image ${idx + 1} URL`}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#FF6B00] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                    />
+                    {(form.images ?? []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addImage}
+                  className="flex items-center gap-1.5 text-xs font-medium text-[#FF6B00] hover:text-[#e55f00]"
+                >
+                  <Plus className="h-3 w-3" /> Add another image
+                </button>
+              </div>
+              {(form.images ?? []).filter((img) => img.trim() !== '').map((img, idx) => (
+                <div key={`preview-${idx}`} className="mt-2">
+                  <img src={img} alt={`Preview ${idx + 1}`} className="h-10 w-12 rounded-lg object-cover border border-gray-200" />
+                </div>
+              ))}
             </div>
             {/* Badge */}
             <div>
@@ -210,7 +252,7 @@ export default function AdminDestinationsPage() {
                     {/* Thumbnail */}
                     <td className="px-3 py-3">
                       <img
-                        src={dest.image || 'https://picsum.photos/seed/dest/40/40'}
+                        src={(dest.images ?? [''])[0] || 'https://picsum.photos/seed/dest/40/40'}
                         alt={dest.name}
                         className="h-10 w-10 rounded-lg object-cover"
                       />

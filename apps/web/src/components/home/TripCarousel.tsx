@@ -18,15 +18,106 @@ function getMonthYear(d?: string) {
   } catch { return 'TBA'; }
 }
 
+// Card width + gap (px) — matches CSS below
+const CARD_W = 320;
+const GAP = 20;
+
+// ── Individual trip card with image slideshow ────────────────────────────────
+function TripCard({ trip, variant }: { trip: ITrip; variant: 'upcoming' | 'completed' }) {
+  const monthYear = getMonthYear(trip.startDates[0]);
+  const badgeText = variant === 'upcoming'
+    ? `UPCOMING · ${monthYear}`
+    : `COMPLETED · ${monthYear}`;
+
+  const baseImages = trip.images && trip.images.length ? trip.images : [trip.coverImage];
+  // Duplicate first image at end for seamless infinite right-to-left loop
+  const images = [...baseImages, baseImages[0]];
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    if (baseImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIdx((prev) => {
+        const next = prev + 1;
+        if (next >= images.length) return 0;
+        return next;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [baseImages, images]);
+
+  return (
+    <Link
+      key={trip._id}
+      href={`/trips/${trip.slug}`}
+      className="group flex shrink-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-card hover:shadow-card-hover transition-shadow"
+      style={{ width: `${CARD_W}px`, scrollSnapAlign: 'start' }}
+    >
+      {/* Image */}
+      <div className="relative overflow-hidden" style={{ height: '200px' }}>
+        {images.map((img, i) => (
+          <img
+            key={i}
+            src={img}
+            alt={trip.title}
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out group-hover:scale-105"
+            loading="lazy"
+            style={{
+              opacity: i === currentIdx ? 1 : 0,
+            }}
+          />
+        ))}
+        <span
+          className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
+          style={{ backgroundColor: variant === 'upcoming' ? '#FF6B00' : '#6B7280' }}
+        >
+          {badgeText}
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col p-4">
+        <p className="mb-0.5 text-[11px] font-extrabold uppercase tracking-widest" style={{ color: '#FF6B00' }}>
+          {trip.destination.toUpperCase()}
+        </p>
+        <h3 className="mb-1.5 text-sm font-bold leading-snug text-gray-900 group-hover:text-[#FF6B00] transition-colors line-clamp-2">
+          {trip.title}
+        </h3>
+        <p className="mb-3 text-xs leading-relaxed text-gray-500 line-clamp-2 flex-1">
+          {trip.shortDescription ?? trip.description}
+        </p>
+        <div className="mb-2 text-xs text-gray-500">
+          ◷ {trip.duration} Days / {trip.nights} Nights
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+          <div>
+            <span className="text-base font-extrabold text-gray-900">
+              {formatCurrency(trip.pricePerPerson)}
+            </span>
+            {variant === 'upcoming' && (
+              <span className="ml-1 text-xs text-gray-400">/person</span>
+            )}
+          </div>
+          <span className="text-xs font-bold" style={{ color: '#FF6B00' }}>
+            {variant === 'upcoming' ? 'Book Now ↗' : 'Read story ↗'}
+          </span>
+        </div>
+        {variant === 'upcoming' && (
+          <p className="mt-1 text-xs text-gray-400">👥 {trip.availableSeats} seats left</p>
+        )}
+        {variant === 'completed' && (
+          <p className="mt-1 text-xs text-gray-400">⭐ {trip.ratingsAverage.toFixed(1)} · {trip.ratingsQuantity} travellers</p>
+        )}
+      </div>
+    </Link>
+  );
+}
+
 export default function TripCarousel({ trips, variant }: TripCarouselProps) {
-  const trackRef    = useRef<HTMLDivElement>(null);
-  const [current, setCurrent]   = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [current, setCurrent] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const total = trips.length;
-
-  // Card width + gap (px) — matches CSS below
-  const CARD_W = 320;
-  const GAP    = 20;
 
   const scrollTo = useCallback((idx: number) => {
     const clamped = Math.max(0, Math.min(idx, total - 1));
@@ -63,72 +154,9 @@ export default function TripCarousel({ trips, variant }: TripCarouselProps) {
         className="flex gap-5 overflow-x-hidden scroll-smooth pb-2"
         style={{ scrollSnapType: 'x mandatory' }}
       >
-        {trips.map((trip) => {
-          const monthYear = getMonthYear(trip.startDates[0]);
-          const badgeText = variant === 'upcoming'
-            ? `UPCOMING · ${monthYear}`
-            : `COMPLETED · ${monthYear}`;
-
-          return (
-            <Link
-              key={trip._id}
-              href={`/trips/${trip.slug}`}
-              className="group flex shrink-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-card hover:shadow-card-hover transition-shadow"
-              style={{ width: `${CARD_W}px`, scrollSnapAlign: 'start' }}
-            >
-              {/* Image */}
-              <div className="relative overflow-hidden" style={{ height: '200px' }}>
-                <img
-                  src={trip.coverImage}
-                  alt={trip.title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <span
-                  className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
-                  style={{ backgroundColor: variant === 'upcoming' ? '#FF6B00' : '#6B7280' }}
-                >
-                  {badgeText}
-                </span>
-              </div>
-
-              {/* Content */}
-              <div className="flex flex-1 flex-col p-4">
-                <p className="mb-0.5 text-[11px] font-extrabold uppercase tracking-widest" style={{ color: '#FF6B00' }}>
-                  {trip.destination.toUpperCase()}
-                </p>
-                <h3 className="mb-1.5 text-sm font-bold leading-snug text-gray-900 group-hover:text-[#FF6B00] transition-colors line-clamp-2">
-                  {trip.title}
-                </h3>
-                <p className="mb-3 text-xs leading-relaxed text-gray-500 line-clamp-2 flex-1">
-                  {trip.shortDescription ?? trip.description}
-                </p>
-                <div className="mb-2 text-xs text-gray-500">
-                  ◷ {trip.duration} Days / {trip.nights} Nights
-                </div>
-                <div className="flex items-center justify-between border-t border-gray-100 pt-2">
-                  <div>
-                    <span className="text-base font-extrabold text-gray-900">
-                      {formatCurrency(trip.pricePerPerson)}
-                    </span>
-                    {variant === 'upcoming' && (
-                      <span className="ml-1 text-xs text-gray-400">/person</span>
-                    )}
-                  </div>
-                  <span className="text-xs font-bold" style={{ color: '#FF6B00' }}>
-                    {variant === 'upcoming' ? 'Book Now ↗' : 'Read story ↗'}
-                  </span>
-                </div>
-                {variant === 'upcoming' && (
-                  <p className="mt-1 text-xs text-gray-400">👥 {trip.availableSeats} seats left</p>
-                )}
-                {variant === 'completed' && (
-                  <p className="mt-1 text-xs text-gray-400">⭐ {trip.ratingsAverage.toFixed(1)} · {trip.ratingsQuantity} travellers</p>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+        {trips.map((trip) => (
+          <TripCard key={trip._id} trip={trip} variant={variant} />
+        ))}
       </div>
 
       {/* ── Navigation arrows ──────────────────────────────────── */}

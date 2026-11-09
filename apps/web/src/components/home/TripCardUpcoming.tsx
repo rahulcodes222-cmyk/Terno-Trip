@@ -22,30 +22,37 @@ export default function TripCardUpcoming({ trip, variant }: Props) {
   const badgeText  = variant === 'upcoming'
     ? `UPCOMING · ${monthYear}`
     : `COMPLETED · ${monthYear}`;
-    // Prepare images array for slideshow (fallback to coverImage)
-    const images = trip.images && trip.images.length ? trip.images : [trip.coverImage];
-    const [currentIdx, setCurrentIdx] = useState(0);
-    useEffect(() => {
-      if (images.length <= 1) return;
-      const interval = setInterval(() => {
-        setCurrentIdx((prev) => (prev + 1) % images.length);
-      }, 1000);
-      return () => clearInterval(interval);
-    }, [images]);
+
+  const images = trip.images && trip.images.length ? trip.images : [trip.coverImage];
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIdx((prev) => (prev + 1) % images.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [images]);
 
   return (
     <Link
       href={`/trips/${trip.slug}`}
       className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-card hover:shadow-card-hover transition-shadow"
     >
-      {/* ── Image ─────────────────────────────────────────────── */}
+      {/* ── Image with right-to-left slide + fade ───────────────────── */}
       <div className="relative overflow-hidden" style={{ height: '210px' }}>
-        <img
-          src={trip.coverImage}
-          alt={trip.title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
+        {images.map((img, i) => (
+          <img
+            key={i}
+            src={img}
+            alt={trip.title}
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out group-hover:scale-105 shrink-0"
+            loading="lazy"
+            style={{
+              opacity: i === currentIdx ? 1 : 0,
+            }}
+          />
+        ))}
         {/* Upcoming/Completed badge — top left, orange pill */}
         <span
           className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
@@ -57,7 +64,6 @@ export default function TripCardUpcoming({ trip, variant }: Props) {
 
       {/* ── Content ───────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col p-4">
-        {/* State in orange — "HIMACHAL PRADESH" */}
         <p
           className="mb-1 text-[11px] font-extrabold uppercase tracking-widest"
           style={{ color: '#FF6B00' }}
@@ -65,28 +71,21 @@ export default function TripCardUpcoming({ trip, variant }: Props) {
           {trip.destination.toUpperCase()}
         </p>
 
-        {/* Trip title — bold, large */}
         <h3 className="mb-1.5 text-base font-bold leading-snug text-gray-900 group-hover:text-[#FF6B00] transition-colors line-clamp-2">
           {trip.title}
         </h3>
 
-        {/* Short description */}
         <p className="mb-3 text-xs leading-relaxed text-gray-500 line-clamp-2 flex-1">
           {trip.shortDescription ?? trip.description}
         </p>
 
-        {/* Duration + Price row */}
         <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
           <span>◷ {trip.duration} Days / {trip.nights} Nights</span>
-          <span
-            className="font-bold"
-            style={{ color: '#FF6B00' }}
-          >
+          <span className="font-bold" style={{ color: '#FF6B00' }}>
             {formatCurrency(trip.pricePerPerson)}/person
           </span>
         </div>
 
-        {/* Seats + Book Now row */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           {variant === 'upcoming' ? (
             <span className="text-xs text-gray-500">👥 {trip.availableSeats} seats left</span>
@@ -96,10 +95,7 @@ export default function TripCardUpcoming({ trip, variant }: Props) {
             </span>
           )}
 
-          <span
-            className="text-xs font-bold transition-colors"
-            style={{ color: '#FF6B00' }}
-          >
+          <span className="text-xs font-bold transition-colors" style={{ color: '#FF6B00' }}>
             {variant === 'upcoming' ? 'Book Now ↗' : 'Read story ↗'}
           </span>
         </div>

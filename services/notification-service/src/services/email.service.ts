@@ -99,65 +99,76 @@ interface BookingEmailData {
 function bookingConfirmationUserHtml(data: BookingEmailData): string {
   const amountFormatted = `₹${data.totalAmount.toLocaleString("en-IN")}`;
   const content = `
-    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">
-      🎉 Booking Confirmed!
-    </h2>
-    <p style="margin:0 0 28px;color:#6b7280;font-size:15px;line-height:1.6;">
-      Hi ${data.userName}, your trip has been successfully booked and your payment is confirmed.
-      Get ready for an amazing adventure!
-    </p>
+    <div style="font-family:'Segoe UI',Roboto,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#FF6B00 0%,#ff8c42 100%);padding:40px;text-align:center;">
+        ${logoBlock}
+        <h1 style="margin:12px 0 0;font-size:30px;font-weight:800;color:#ffffff;">Booking Confirmed! 🎉</h1>
+        <p style="margin:6px 0 0;font-size:15px;color:rgba(255,255,255,0.9);">Your trip is booked and payment confirmed.</p>
+      </div>
+      <!-- Body -->
+      <div style="padding:40px;">
+        <p style="font-size:16px;color:#374151;margin:0 0 8px;">Hi <strong>${data.userName}</strong>,</p>
+        <p style="font-size:15px;color:#6b7280;margin:0 0 32px;">Your booking has been confirmed and payment received successfully. Get ready for an amazing journey!</p>
 
-    <!-- Booking Card -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;padding:0;margin-bottom:28px;">
-      <tr>
-        <td style="padding:24px;">
-          <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#9a3412;text-transform:uppercase;letter-spacing:1px;">Booking Details</p>
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;width:45%;">Booking Reference</td>
-              <td style="padding:6px 0;font-size:14px;font-weight:700;color:#111827;font-family:monospace;">${data.bookingRef}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Trip</td>
-              <td style="padding:6px 0;font-size:14px;font-weight:600;color:#111827;">${data.tripTitle}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Destination</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">📍 ${data.destination}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Departure Date</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">📅 ${data.departureDate}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Travellers</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">👥 ${data.travellersCount} person${data.travellersCount > 1 ? "s" : ""}</td>
-            </tr>
-            <tr>
-              <td style="padding:8px 0 0;font-size:15px;color:#6b7280;font-weight:600;border-top:1px solid #fed7aa;">Amount Paid</td>
-              <td style="padding:8px 0 0;font-size:18px;font-weight:800;color:${brandColor};border-top:1px solid #fed7aa;">${amountFormatted}</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
+        <!-- Booking Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;margin-bottom:32px;">
+          <tr>
+            <td style="padding:26px;">
+              <p style="margin:0 0 18px;font-size:13px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:1px;">Booking Details</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;width:45%;">Booking Reference</td>
+                  <td style="padding:8px 0;font-size:15px;font-weight:700;color:#111827;font-family:monospace;">${data.bookingRef}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Trip</td>
+                  <td style="padding:8px 0;font-size:14px;font-weight:600;color:#111827;">${data.tripTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Destination</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">📍 ${data.destination}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Departure Date</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">📅 ${data.departureDate}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Travellers</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">👥 ${data.travellersCount} person${data.travellersCount > 1 ? "s" : ""}</td>
+                </tr>
+                <tr style="border-top:2px solid #fed7aa;">
+                  <td style="padding:12px 0 8px;font-size:14px;color:#9a3412;font-weight:700;">Amount Paid</td>
+                  <td style="padding:12px 0 8px;font-size:18px;font-weight:800;color:#9a3412;">${amountFormatted}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
 
-    <!-- CTA -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      <tr>
-        <td align="center">
-          <a href="${frontendUrl}/bookings/${data.bookingRef}"
-             style="display:inline-block;background:${brandColor};color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:50px;">
-            View My Booking →
-          </a>
-        </td>
-      </tr>
-    </table>
+        <!-- CTA -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+          <tr>
+            <td align="center">
+              <a href="${frontendUrl}/bookings/${data.bookingRef}"
+                 style="display:inline-block;background:${brandColor};color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 40px;border-radius:50px;">
+                View My Booking →
+              </a>
+            </td>
+          </tr>
+        </table>
 
-    <p style="margin:0;font-size:14px;color:#9ca3af;text-align:center;line-height:1.6;">
-      Questions? Reply to this email or contact our support team.<br/>
-      We wish you a wonderful journey! 🌍
-    </p>`;
+        <p style="margin:0;font-size:14px;color:#6b7280;text-align:center;line-height:1.6;">
+          Questions? Reply to this email or contact our support team.<br/>
+          We wish you a wonderful journey! 🌍
+        </p>
+      </div>
+      <!-- Footer -->
+      <div style="background:#f1f5f9;padding:24px 40px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;">This is an automated booking confirmation. Please do not reply.</p>
+      </div>
+    </div>`;
 
   return baseTemplate(content);
 }
@@ -165,58 +176,71 @@ function bookingConfirmationUserHtml(data: BookingEmailData): string {
 function bookingConfirmationAdminHtml(data: BookingEmailData): string {
   const amountFormatted = `₹${data.totalAmount.toLocaleString("en-IN")}`;
   const content = `
-    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">
-      🛎 New Booking Alert
-    </h2>
-    <p style="margin:0 0 28px;color:#6b7280;font-size:15px;">
-      A new trip booking has been confirmed and payment received.
-    </p>
+    <div style="font-family:'Segoe UI',Roboto,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#166534 0%,#15803d 100%);padding:40px;text-align:center;">
+        ${logoBlock}
+        <h1 style="margin:12px 0 0;font-size:30px;font-weight:800;color:#ffffff;">New Booking Alert 🛎</h1>
+        <p style="margin:6px 0 0;font-size:15px;color:rgba(255,255,255,0.9);">A new trip booking has been confirmed.</p>
+      </div>
+      <!-- Body -->
+      <div style="padding:40px;">
+        <p style="font-size:16px;color:#374151;margin:0 0 8px;">Hi Admin,</p>
+        <p style="font-size:15px;color:#6b7280;margin:0 0 32px;">A customer has completed a booking and payment was received successfully.</p>
 
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:12px;margin-bottom:28px;">
-      <tr>
-        <td style="padding:24px;">
-          <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#166534;text-transform:uppercase;letter-spacing:1px;">Booking Summary</p>
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;width:45%;">Booking Ref</td>
-              <td style="padding:6px 0;font-size:14px;font-weight:700;color:#111827;font-family:monospace;">${data.bookingRef}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Customer</td>
-              <td style="padding:6px 0;font-size:14px;font-weight:600;color:#111827;">${data.userName}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Customer Email</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">${data.userEmail}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Trip</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">${data.tripTitle}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Destination</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">${data.destination}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Departure</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">${data.departureDate}</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;font-size:14px;color:#6b7280;">Travellers</td>
-              <td style="padding:6px 0;font-size:14px;color:#111827;">${data.travellersCount}</td>
-            </tr>
-            <tr>
-              <td style="padding:8px 0 0;font-size:15px;font-weight:600;color:#166534;border-top:1px solid #bbf7d0;">Revenue</td>
-              <td style="padding:8px 0 0;font-size:18px;font-weight:800;color:#166534;border-top:1px solid #bbf7d0;">${amountFormatted}</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
+        <!-- Booking Summary -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:12px;margin-bottom:32px;">
+          <tr>
+            <td style="padding:26px;">
+              <p style="margin:0 0 18px;font-size:13px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:1px;">Booking Summary</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;width:45%;">Booking Ref</td>
+                  <td style="padding:8px 0;font-size:15px;font-weight:700;color:#111827;font-family:monospace;">${data.bookingRef}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Customer</td>
+                  <td style="padding:8px 0;font-size:14px;font-weight:600;color:#111827;">${data.userName}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Customer Email</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">${data.userEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Trip</td>
+                  <td style="padding:8px 0;font-size:14px;font-weight:600;color:#111827;">${data.tripTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Destination</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">${data.destination}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Departure</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">${data.departureDate}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#6b7280;">Travellers</td>
+                  <td style="padding:8px 0;font-size:14px;color:#111827;">${data.travellersCount}</td>
+                </tr>
+                <tr style="border-top:2px solid #bbf7d0;">
+                  <td style="padding:12px 0 8px;font-size:14px;color:#166534;font-weight:700;">Revenue</td>
+                  <td style="padding:12px 0 8px;font-size:18px;font-weight:800;color:#166534;">${amountFormatted}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">
-      Booking time: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST
-    </p>`;
+        <p style="margin:0;font-size:13px;color:#6b7280;text-align:center;">
+          Booking time: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST
+        </p>
+      </div>
+      <!-- Footer -->
+      <div style="background:#f1f5f9;padding:24px 40px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;">This is an automated booking alert. Please do not reply.</p>
+      </div>
+    </div>`;
 
   return baseTemplate(content);
 }
