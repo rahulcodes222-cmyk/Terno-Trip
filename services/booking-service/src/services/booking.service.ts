@@ -280,20 +280,31 @@ export async function createBooking(
   }
 
   // 7. Send booking confirmation email (user + admin) – best‑effort, ignore failures
-  await sendBookingCreatedEmail(booking);
-  console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}`);
+  try {
+    await sendBookingCreatedEmail(booking);
+    console.log(`[booking-service] Booking email dispatched → user: ${booking.contactEmail}`);
+  } catch (err) {
+    console.error("[booking-service] Failed to send booking email:", err.message);
+    // Don't throw — booking is already created, email is best-effort
+  }
 
   // 8. Notify user via HTTP (cross-process — in-memory EventEmitter won't work here)
-  await notifyUser({
-    userId,
-    title: "Booking Received",
-    message: `Your booking for ${tripSnapshot.title} has been received and is pending payment. Ref: ${booking.bookingRef}`,
-    type: "booking",
-    metadata: {
-      bookingId: String(booking._id),
-      bookingRef: booking.bookingRef,
-      tripId: data.tripId,
-    },
+  try {
+    await notifyUser({
+      userId,
+      title: "Booking Received",
+      message: `Your booking for ${tripSnapshot.title} has been received and is pending payment. Ref: ${booking.bookingRef}`,
+      type: "booking",
+      metadata: {
+        bookingId: String(booking._id),
+        bookingRef: booking.bookingRef,
+        tripId: data.tripId,
+      },
+    });
+  } catch (err) {
+    console.error("[booking-service] Failed to send notification:", err.message);
+    // Don't throw — booking is already created, notification is best-effort
+  }
   });
 
   return booking;
@@ -402,7 +413,18 @@ export async function updateBookingPaymentStatus(
     update.paymentId = paymentId;
   }
 
-  const booking = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
+  // Find by bookingRef first (payment-service sends bookingRef like "TERNO-123456")
+  // Fall back to _id if that doesn't match
+  let booking = await Booking.findOneAndUpdate(
+    { bookingRef: bookingId },
+    update,
+    { new: true }
+  ).lean();
+
+  if (!booking) {
+    // Fall back to _id lookup
+    booking = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
+  }
 
   // If payment was successful, decrement seats in trip-service
   if (booking && paymentStatus === "Paid") {
