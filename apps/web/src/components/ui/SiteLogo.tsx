@@ -12,9 +12,9 @@ interface SiteLogoProps {
 }
 
 const SIZE = {
-  sm: { img: 36, text: 'text-base' },
-  md: { img: 48, text: 'text-xl'   },
-  lg: { img: 64, text: 'text-2xl'  },
+  sm: { img: 36, text: 'text-xl' },
+  md: { img: 44, text: 'text-2xl' },
+  lg: { img: 56, text: 'text-3xl' },
 };
 
 export default function SiteLogo({ size = 'md', dark = false, linked = true, className = '' }: SiteLogoProps) {
@@ -41,24 +41,31 @@ export default function SiteLogo({ size = 'md', dark = false, linked = true, cla
   const logo = logoUrl || '/images/logo.svg';
   const name = siteName || 'TernoTrip';
 
-  // Split "TernoTrip" → "Terno" + "Trip"
-  const splitAt = name.indexOf('Trip');
+  // Split name for stylish two-tone brand like "Terno" + "Trip"
+  const splitAt = name.toLowerCase().indexOf('trip');
   const part1 = splitAt > 0 ? name.slice(0, splitAt) : name;
   const part2 = splitAt > 0 ? name.slice(splitAt) : '';
 
   const content = (
-    <div className={`flex items-center gap-0 shrink-0 ${className}`}>
-      <img
-        src={logo}
-        alt={name}
-        width={img}
-        height={img}
-        className="object-contain"
-        style={{ display: 'block' }}
-      />
-      <span className={`${text} font-extrabold leading-none tracking-tight -ml-1`}>
-        <span style={{ color: dark ? '#FFFFFF' : '#1B2E6B' }}>{part1}</span>
-        {part2 && <span style={{ color: '#FF4500' }}>{part2}</span>}
+    <div className={`flex items-center gap-2 shrink-0 ${className}`}>
+      {logo && (
+        <img
+          src={logo}
+          alt={name}
+          width={img}
+          height={img}
+          className="object-contain max-h-9 w-auto"
+          style={{ display: 'block' }}
+          onError={(e) => {
+            // Hide image if broken/missing
+            (e.target as HTMLElement).style.display = 'none';
+          }}
+        />
+      )}
+      <span className={`${text} font-black tracking-tight select-none flex items-baseline font-sans`}>
+        <span className={dark ? 'text-white' : 'text-gray-900'}>{part1}</span>
+        {part2 && <span className="text-[#FFA300]">{part2}</span>}
+        <span className="text-[10px] font-bold text-[#FFA300] ml-0.5 tracking-normal">™</span>
       </span>
     </div>
   );
