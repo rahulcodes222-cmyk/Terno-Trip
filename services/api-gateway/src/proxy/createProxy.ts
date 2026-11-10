@@ -25,6 +25,7 @@ export function createServiceProxy(targetUrl: string, pathPrefix: string) {
     on: {
       proxyReq: (proxyReq, req: any) => {
         if (req.user?.id)      proxyReq.setHeader("x-user-id",           req.user.id);
+        if (req.user?.email)   proxyReq.setHeader("x-user-email",        req.user.email);
         if (req.user?.role)    proxyReq.setHeader("x-user-role",         req.user.role);
         proxyReq.setHeader("x-internal-secret", env.INTERNAL_SERVICE_SECRET);
         if (req.correlationId) proxyReq.setHeader("x-correlation-id",    req.correlationId);

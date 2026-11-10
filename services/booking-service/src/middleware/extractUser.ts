@@ -5,6 +5,7 @@ declare global {
     interface Request {
       user?: {
         id: string;
+        email?: string;
         role: string;
       };
     }
@@ -12,7 +13,7 @@ declare global {
 }
 
 /**
- * Reads x-user-id and x-user-role headers forwarded by the API gateway
+ * Reads x-user-id, x-user-email, and x-user-role headers forwarded by the API gateway
  * after it validates the access_token cookie.
  */
 export function extractUser(
@@ -21,6 +22,7 @@ export function extractUser(
   next: NextFunction
 ): void {
   const userId = req.headers["x-user-id"] as string | undefined;
+  const userEmail = req.headers["x-user-email"] as string | undefined;
   const userRole = req.headers["x-user-role"] as string | undefined;
 
   if (!userId) {
@@ -32,6 +34,7 @@ export function extractUser(
 
   req.user = {
     id: userId,
+    email: userEmail,
     role: userRole ?? "user",
   };
 

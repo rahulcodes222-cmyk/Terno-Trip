@@ -6,13 +6,14 @@ import { env } from "../config/env.js";
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; role: string };
+      user?: { id: string; email?: string; role: string };
     }
   }
 }
 
 interface JwtPayload {
   sub: string;
+  email?: string;
   role: string;
   type: string;
 }
@@ -41,7 +42,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
   try {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
-    req.user = { id: payload.sub, role: payload.role };
+    req.user = { id: payload.sub, email: payload.email, role: payload.role };
     next();
   } catch {
     res.status(401).json({ success: false, message: "Invalid or expired token" });
@@ -58,7 +59,7 @@ export function optionalAuthenticate(req: Request, _res: Response, next: NextFun
 
   try {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
-    req.user = { id: payload.sub, role: payload.role };
+    req.user = { id: payload.sub, email: payload.email, role: payload.role };
   } catch {
     // Swallow error — treat as unauthenticated
   }

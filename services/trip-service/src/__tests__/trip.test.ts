@@ -19,21 +19,28 @@ vi.mock("../models/Trip.js", () => {
     limit: vi.fn().mockReturnThis(),
     lean: vi.fn().mockResolvedValue(mockTrips),
   });
-  const mockFindOne = vi.fn().mockResolvedValue(null);
+  const mockFindOne = vi.fn().mockReturnValue({
+    lean: vi.fn().mockResolvedValue(null),
+  });
   const mockCountDocuments = vi.fn().mockResolvedValue(2);
   const mockDistinct = vi.fn().mockResolvedValue(["Adventure", "Beach", "Cultural"]);
 
+  class MockTrip {
+    constructor(data: any) {
+      Object.assign(this, data);
+    }
+    save = vi.fn().mockResolvedValue(this);
+    static find = mockFind;
+    static findOne = mockFindOne;
+    static findById = vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    static findByIdAndUpdate = vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    static findOneAndUpdate = vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    static countDocuments = mockCountDocuments;
+    static distinct = mockDistinct;
+  }
+
   return {
-    Trip: {
-      find: mockFind,
-      findOne: mockFindOne,
-      findById: vi.fn().mockResolvedValue(null),
-      findByIdAndUpdate: vi.fn().mockResolvedValue(null),
-      findOneAndUpdate: vi.fn().mockResolvedValue(null),
-      countDocuments: mockCountDocuments,
-      distinct: mockDistinct,
-      prototype: { save: vi.fn() },
-    },
+    Trip: MockTrip,
   };
 });
 
@@ -95,7 +102,9 @@ describe("Trip Controller", () => {
   describe("getTrip", () => {
     it("returns 404 for unknown slug", async () => {
       const { Trip } = await import("../models/Trip.js");
-      (Trip.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (Trip.findOne as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValueOnce(null),
+      });
 
       const { getTrip } = await import("../controllers/trip.controller.js");
       const { req, res, next } = mockReqRes({ slug: "nonexistent-slug" });
@@ -105,7 +114,9 @@ describe("Trip Controller", () => {
 
     it("returns 200 with trip for valid slug", async () => {
       const { Trip } = await import("../models/Trip.js");
-      (Trip.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockTrips[0]);
+      (Trip.findOne as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValueOnce(mockTrips[0]),
+      });
 
       const { getTrip } = await import("../controllers/trip.controller.js");
       const { req, res, next } = mockReqRes({ slug: "manali-trek" });

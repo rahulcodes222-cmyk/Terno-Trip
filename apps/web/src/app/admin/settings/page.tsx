@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Save, CheckCircle, Image as ImageIcon, FileText, Shield, RefreshCw } from 'lucide-react';
 import { getSiteSettings, saveSiteSettings, DEFAULT_SETTINGS } from '@/lib/site-settings';
 import Button from '@/components/ui/Button';
+import apiClient from '@/lib/api-client';
 
 type Tab = 'logo' | 'terms' | 'privacy' | 'cancellation';
 
@@ -20,8 +21,19 @@ export default function AdminSettingsPage() {
     setLogoPreview(s.logoUrl);
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     saveSiteSettings(settings);
+
+    // Sync logo + siteName to notification-service so email templates pick it up
+    try {
+      await apiClient.post('/api/v1/admin/notifications/brand', {
+        logoUrl: settings.logoUrl,
+        siteName: settings.siteName,
+      });
+    } catch {
+      // best-effort — don't block save if notification-service is unreachable
+    }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

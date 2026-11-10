@@ -148,7 +148,7 @@ export async function incrementSeats(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { tripId, seats } = req.body as { tripId: string; seats: number };
+    const { tripId, seats, departureDate } = req.body as { tripId: string; seats: number; departureDate?: string };
 
     if (!tripId || seats === undefined) {
       res
@@ -157,7 +157,7 @@ export async function incrementSeats(
       return;
     }
 
-    const trip = await tripService.incrementSeats(tripId, seats);
+    const trip = await tripService.incrementSeats(tripId, seats, departureDate);
     if (!trip) {
       res
         .status(404)

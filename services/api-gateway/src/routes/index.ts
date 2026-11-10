@@ -49,6 +49,11 @@ router.use("/api/v1/admin/bookings",
   authenticate,
   createServiceProxy(env.BOOKING_SERVICE_URL, "/api/v1/admin/bookings"));
 
+// Admin notification settings (brand/logo sync) → notification-service
+router.use("/api/v1/admin/notifications",
+  authenticate,
+  createServiceProxy(env.NOTIFICATION_SERVICE_URL, "/api/v1/admin/notifications"));
+
 // Admin trip/general routes → trip-service
 router.use("/api/v1/admin",
   authenticate,

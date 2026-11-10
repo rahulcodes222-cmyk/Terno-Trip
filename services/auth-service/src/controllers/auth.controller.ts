@@ -79,7 +79,7 @@ export async function register(
       password: body.password,
     });
 
-    const accessToken = generateAccessToken(user._id.toString(), user.role);
+    const accessToken = generateAccessToken(user._id.toString(), user.role, user.email);
     const refreshToken = generateRefreshToken(user._id.toString());
 
     // Hash refresh token before storing
@@ -142,7 +142,7 @@ export async function login(
       return;
     }
 
-    const accessToken = generateAccessToken(user._id.toString(), user.role);
+    const accessToken = generateAccessToken(user._id.toString(), user.role, user.email);
     const refreshToken = generateRefreshToken(user._id.toString());
 
     const hashedRefresh = await bcrypt.hash(refreshToken, 10);
@@ -249,7 +249,7 @@ export async function refresh(
       return;
     }
 
-    const newAccessToken = generateAccessToken(user._id.toString(), user.role);
+    const newAccessToken = generateAccessToken(user._id.toString(), user.role, user.email);
     const newRefreshToken = generateRefreshToken(user._id.toString());
 
     const hashedRefresh = await bcrypt.hash(newRefreshToken, 10);

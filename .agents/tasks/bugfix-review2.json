@@ -1,0 +1,27 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "toctou-per-date-seats",
+      "severity": "high",
+      "confidence": "confirmed",
+      "summary": "TOCTOU race in per-date seat decrement — two concurrent bookings can both pass the in-memory availableSeats guard and both commit, yielding negative seat counts.",
+      "fix": "Add \"seatsByStartDate.$.availableSeats\": { $gte: seats } to the findOneAndUpdate filter so MongoDB enforces the guard atomically at commit time. Return null if the update matches no document."
+    },
+    {
+      "id": "non-atomic-sold-out-deactivation",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "summary": "isActive: false is written in a separate findByIdAndUpdate after the seat $inc. A concurrent trip-list query between the two writes sees availableSeats <= 0 but isActive: true, allowing another booking attempt to proceed.",
+      "fix": "Either accept and document the brief inconsistency window, or use a MongoDB transaction to make the decrement and deactivation atomic."
+    },
+    {
+      "id": "paymentid-direct-placeholder",
+      "severity": "low",
+      "confidence": "confirmed",
+      "summary": "sendBookingCreatedEmail hardcodes paymentId: \"Direct\" which surfaces to the traveller as a Payment ID in the confirmation email — confusing for a direct booking.",
+      "fix": "Omit paymentId from the payload (the field is optional in BookingEmailData) so the email template renders nothing for that row, rather than showing a meaningless string."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\DELL\\OneDrive\\Desktop\\terno_trip\\.agents\\tasks\\bugfix-review2.md"
+}

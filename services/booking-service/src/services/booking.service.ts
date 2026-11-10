@@ -200,12 +200,21 @@ export async function createBooking(
   data: CreateBookingInput,
   userId: string
 ): Promise<IBookingDocument> {
-  // 1. Check for duplicate booking — same user, same trip, same departure date, not cancelled
+  // 1. Duplicate check — by userId OR contactEmail (calendar day boundaries)
+  const depDate = new Date(data.departureDate);
+  const startOfDay = new Date(depDate);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const endOfDay = new Date(depDate);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+
   const existingBooking = await Booking.findOne({
-    userId,
     tripId: data.tripId,
-    departureDate: new Date(data.departureDate),
+    departureDate: { $gte: startOfDay, $lte: endOfDay },
     status: { $in: ["Pending", "Confirmed"] },
+    $or: [
+      { userId },
+      { contactEmail: data.contactEmail.toLowerCase().trim() },
+    ],
   });
 
   if (existingBooking) {
@@ -221,9 +230,11 @@ export async function createBooking(
     data.travellers.length
   );
 
-  if (!availableSeats || availableSeats < data.travellers.length) {
+  if (availableSeats === undefined || availableSeats < data.travellers.length) {
     throw new Error(
-      `Only ${availableSeats ?? 0} seat(s) available for this date`
+      availableSeats === 0
+        ? "No seats available for this date — it is fully booked"
+        : `Only ${availableSeats ?? 0} seat(s) available for this date`
     );
   }
 
@@ -241,7 +252,7 @@ export async function createBooking(
     duration: tripData?.duration ?? 0,
   };
 
-  // 5. Create booking with server-calculated total
+  // 5. Create booking with server-calculated total — guaranteed Confirmed
   const booking = new Booking({
     bookingRef: generateBookingRef(),
     userId,
@@ -261,7 +272,7 @@ export async function createBooking(
 
   // 6. Decrement seats immediately (reserve them)
   try {
-    await fetch(`${env.TRIP_SERVICE_URL}/api/v1/internal/trips/decrement-seats`, {
+    const decrementRes = await fetch(`${env.TRIP_SERVICE_URL}/api/v1/internal/trips/decrement-seats`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -274,8 +285,17 @@ export async function createBooking(
       }),
       signal: AbortSignal.timeout(5000),
     });
+
+    if (!decrementRes.ok) {
+      const errBody = await decrementRes.json().catch(() => ({}));
+      console.error("[booking-service] decrement-seats failed:", decrementRes.status, errBody);
+      // If seat decrement fails, delete the booking and throw
+      await Booking.findByIdAndDelete(booking._id);
+      throw new Error("Failed to reserve seats — not enough availability. Please try again.");
+    }
   } catch (err) {
-    // If seat decrement fails, delete the booking and throw
+    if ((err as Error).message.includes("Failed to reserve seats")) throw err;
+    // Network error — delete booking and rethrow
     await Booking.findByIdAndDelete(booking._id);
     throw new Error("Failed to reserve seats. Please try again.");
   }
@@ -314,13 +334,23 @@ export async function createBooking(
 
 export async function getUserBookings(
   userId: string,
+  userEmail?: string,
   page = 1,
   limit = 10
 ): Promise<{ bookings: IBookingDocument[]; total: number }> {
   const skip = (page - 1) * limit;
+  const filter = userEmail
+    ? {
+        $or: [
+          { userId },
+          { contactEmail: userEmail.toLowerCase().trim() },
+        ],
+      }
+    : { userId };
+
   const [bookings, total] = await Promise.all([
-    Booking.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    Booking.countDocuments({ userId }),
+    Booking.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Booking.countDocuments(filter),
   ]);
   return { bookings: bookings as unknown as IBookingDocument[], total };
 }
@@ -329,9 +359,20 @@ export async function getUserBookings(
 
 export async function getBookingByRef(
   ref: string,
-  userId: string
+  userId: string,
+  userEmail?: string
 ): Promise<IBookingDocument | null> {
-  return Booking.findOne({ bookingRef: ref, userId }).lean() as Promise<IBookingDocument | null>;
+  const filter = userEmail
+    ? {
+        bookingRef: ref,
+        $or: [
+          { userId },
+          { contactEmail: userEmail.toLowerCase().trim() },
+        ],
+      }
+    : { bookingRef: ref, userId };
+
+  return Booking.findOne(filter).lean() as Promise<IBookingDocument | null>;
 }
 
 // ─── Get Booking by ID (internal use — no userId check) ──────────────────────
@@ -355,9 +396,20 @@ export async function getBookingByRefInternal(
 export async function cancelBooking(
   id: string,
   userId: string,
+  userEmail?: string,
   reason?: string
 ): Promise<IBookingDocument> {
-  const booking = await Booking.findOne({ _id: id, userId });
+  const filter = userEmail
+    ? {
+        _id: id,
+        $or: [
+          { userId },
+          { contactEmail: userEmail.toLowerCase().trim() },
+        ],
+      }
+    : { _id: id, userId };
+
+  const booking = await Booking.findOne(filter);
 
   if (!booking) {
     throw new Error("Booking not found");
@@ -377,6 +429,7 @@ export async function cancelBooking(
     await callTripService("/api/v1/internal/trips/increment-seats", {
       tripId: booking.tripId,
       seats: booking.travellers.length,
+      departureDate: booking.departureDate,
     });
   } catch (err) {
     console.error("[booking-service] Failed to increment seats on cancellation:", err);
@@ -384,7 +437,7 @@ export async function cancelBooking(
 
   // Notify user via HTTP
   await notifyUser({
-    userId,
+    userId: booking.userId || userId,
     title: "Booking Cancelled",
     message: `Your booking ${booking.bookingRef} has been cancelled.${reason ? ` Reason: ${reason}` : ""}`,
     type: "booking",
@@ -405,9 +458,8 @@ export async function updateBookingPaymentStatus(
 
   if (paymentStatus === "Paid") {
     update.status = "Confirmed";
-  } else if (paymentStatus === "Failed") {
-    update.status = "Pending"; // stays Pending, can retry payment
   }
+  // User requirement: Bookings must show "Confirmed". Never demote to "Pending".
 
   if (paymentId) {
     update.paymentId = paymentId;
@@ -425,13 +477,6 @@ export async function updateBookingPaymentStatus(
     // Fall back to _id lookup
     booking = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
   }
-
-  // NOTE: Seat decrement is intentionally NOT performed here.
-  // Seats are already decremented atomically during createBooking (step 6).
-  // Performing a second decrement here would double-deduct seats for direct
-  // (non-payment-gateway) bookings that are created as Confirmed/Paid immediately.
-  // If a future payment gateway flow requires deferred seat decrement, re-enable
-  // this block only for bookings that were originally created as Pending.
 
   return booking as unknown as IBookingDocument | null;
 }

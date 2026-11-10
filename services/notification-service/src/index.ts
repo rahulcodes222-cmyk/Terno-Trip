@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config"; // v2: logoBlock scope fix, emails to user + admin@rahulcodes222@gmail.com
 
 import { env } from "./config/env.js";
 import { connectDB, disconnectDB } from "./config/database.js";

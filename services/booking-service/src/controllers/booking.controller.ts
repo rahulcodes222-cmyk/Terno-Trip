@@ -94,10 +94,11 @@ export async function getMyBookings(
 ): Promise<void> {
   try {
     const userId = req.user!.id;
+    const userEmail = req.user?.email;
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    const { bookings, total } = await bookingService.getUserBookings(userId, page, limit);
+    const { bookings, total } = await bookingService.getUserBookings(userId, userEmail, page, limit);
     res
       .status(200)
       .json(createPaginatedResponse(bookings, page, limit, total, "Bookings fetched successfully"));
@@ -113,7 +114,8 @@ export async function getBookingByRef(
 ): Promise<void> {
   try {
     const userId = req.user!.id;
-    const booking = await bookingService.getBookingByRef(req.params.ref, userId);
+    const userEmail = req.user?.email;
+    const booking = await bookingService.getBookingByRef(req.params.ref, userId, userEmail);
 
     if (!booking) {
       res
@@ -137,9 +139,10 @@ export async function cancelBooking(
 ): Promise<void> {
   try {
     const userId = req.user!.id;
+    const userEmail = req.user?.email;
     const { reason } = req.body as { reason?: string };
 
-    const booking = await bookingService.cancelBooking(req.params.id, userId, reason);
+    const booking = await bookingService.cancelBooking(req.params.id, userId, userEmail, reason);
     res
       .status(200)
       .json(createApiResponse(booking, "Booking cancelled successfully"));

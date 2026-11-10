@@ -120,12 +120,11 @@ export async function checkAvailability(
   // Validate that the requested departure date is in the trip's startDates
   // Normalize both to YYYY-MM-DD using LOCAL date to avoid UTC offset issues
   const normalizeDate = (d: string | Date): string => {
+    if (!d) return "";
+    if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
     const date = new Date(d);
-    // Use UTC date parts to avoid timezone shifts
-    const y = date.getUTCFullYear();
-    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
   };
 
   const reqDateStr = normalizeDate(departureDate);
@@ -140,19 +139,31 @@ export async function checkAvailability(
     };
   }
 
-  if (trip.availableSeats < seats) {
+  // Check per-date seats first (more accurate than global count)
+  const perDateEntry = trip.seatsByStartDate?.find(
+    (s) => normalizeDate(s.startDate) === reqDateStr
+  );
+
+  // Use per-date seats if available, fall back to global
+  const availableForDate = perDateEntry !== undefined
+    ? perDateEntry.availableSeats
+    : trip.availableSeats;
+
+  if (availableForDate < seats) {
     return {
       available: false,
       pricePerPerson: trip.pricePerPerson,
-      availableSeats: trip.availableSeats,
-      message: `Only ${trip.availableSeats} seat(s) available`,
+      availableSeats: availableForDate,
+      message: availableForDate <= 0
+        ? "No seats available for this date — it is fully booked"
+        : `Only ${availableForDate} seat(s) available for this date`,
     };
   }
 
   return {
     available: true,
     pricePerPerson: trip.pricePerPerson,
-    availableSeats: trip.availableSeats,
+    availableSeats: availableForDate,
   };
 }
 
@@ -161,61 +172,66 @@ export async function decrementSeats(
   seats: number,
   departureDate?: string
 ): Promise<ITripDocument | null> {
+  const normalizeDate = (d: string | Date): string => {
+    if (!d) return "";
+    if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
+  };
+
   if (departureDate) {
-    // Decrement seats for specific date
-    const dateISO = new Date(departureDate).toISOString().split('T')[0];
-    
-    // Find trip and decrement per-date seats
+    const reqDateStr = normalizeDate(departureDate);
+
+    // Step 1: Check current seat counts in-memory before attempting update
     const trip = await Trip.findById(tripId);
     if (!trip) return null;
 
-    // Find the date entry in seatsByStartDate
+    // Find the matching per-date entry using date normalization
     const dateEntry = trip.seatsByStartDate?.find(
-      (s) => new Date(s.startDate).toISOString().split('T')[0] === dateISO
+      (s) => normalizeDate(s.startDate) === reqDateStr
     );
 
     if (dateEntry) {
-      // Decrement seats for this date and global count atomically.
-      // The $gte guard in the filter enforces availability at commit time,
-      // preventing a TOCTOU race where two concurrent requests both pass the
-      // in-memory check and both proceed to decrement.
+      if (dateEntry.availableSeats < seats) return null; // Not enough per-date seats
+
+      // Use the exact dateEntry.startDate object from the matched element
       const result = await Trip.findOneAndUpdate(
         {
           _id: tripId,
-          "seatsByStartDate.startDate": new Date(dateISO),
-          "seatsByStartDate.$.availableSeats": { $gte: seats },
+          "seatsByStartDate.startDate": dateEntry.startDate,
+          "seatsByStartDate.availableSeats": { $gte: seats },
+          availableSeats: { $gte: seats },
         },
-        { $inc: { "seatsByStartDate.$.availableSeats": -seats, availableSeats: -seats } },
-        { new: true }
+        {
+          $inc: {
+            "seatsByStartDate.$.availableSeats": -seats,
+            availableSeats: -seats,
+          },
+        },
+        {
+          new: true,
+        }
       ).lean();
 
-      // result is null when the atomic $gte guard rejected the write (not enough seats)
       if (!result) return null;
 
-      // If all global seats are now gone, mark the trip as inactive.
-      // NOTE: this deactivation is a separate write. A concurrent trip-list query
-      // between the $inc commit and this write may briefly see availableSeats <= 0
-      // with isActive: true. This is an acceptable narrow window given the
-      // availability check already guards against overbooking via the atomic $gte.
+      // Mark trip inactive when all global seats are gone
       if ((result as unknown as ITripDocument).availableSeats <= 0) {
         await Trip.findByIdAndUpdate(tripId, { isActive: false });
       }
 
       return result as unknown as ITripDocument | null;
     } else {
-      // Fall back to global availableSeats when seatsByStartDate has no entry for this date
-      if (trip.availableSeats < seats) {
-        return null; // Not enough seats globally
-      }
+      // No per-date entry found — fall back to global seats only
+      if (trip.availableSeats < seats) return null;
 
-      // Decrement global seats
       const result = await Trip.findOneAndUpdate(
         { _id: tripId, availableSeats: { $gte: seats } },
         { $inc: { availableSeats: -seats } },
         { new: true }
       ).lean();
 
-      // If all global seats are now gone, mark the trip as inactive
       if (result && (result as unknown as ITripDocument).availableSeats <= 0) {
         await Trip.findByIdAndUpdate(tripId, { isActive: false });
       }
@@ -223,14 +239,13 @@ export async function decrementSeats(
       return result as unknown as ITripDocument | null;
     }
   } else {
-    // Decrement global seats (legacy)
+    // No departureDate — decrement global seats only (legacy path)
     const result = await Trip.findOneAndUpdate(
       { _id: tripId, availableSeats: { $gte: seats } },
       { $inc: { availableSeats: -seats } },
       { new: true }
     ).lean();
 
-    // If all global seats are now gone, mark the trip as inactive
     if (result && (result as unknown as ITripDocument).availableSeats <= 0) {
       await Trip.findByIdAndUpdate(tripId, { isActive: false });
     }
@@ -241,11 +256,47 @@ export async function decrementSeats(
 
 export async function incrementSeats(
   tripId: string,
-  seats: number
+  seats: number,
+  departureDate?: string
 ): Promise<ITripDocument | null> {
+  const normalizeDate = (d: string | Date): string => {
+    if (!d) return "";
+    if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
+  };
+
+  if (departureDate) {
+    const reqDateStr = normalizeDate(departureDate);
+    const trip = await Trip.findById(tripId);
+    if (trip) {
+      const dateEntry = trip.seatsByStartDate?.find(
+        (s) => normalizeDate(s.startDate) === reqDateStr
+      );
+
+      if (dateEntry) {
+        return Trip.findOneAndUpdate(
+          {
+            _id: tripId,
+            "seatsByStartDate.startDate": dateEntry.startDate,
+          },
+          {
+            $inc: {
+              "seatsByStartDate.$.availableSeats": seats,
+              availableSeats: seats,
+            },
+            $set: { isActive: true },
+          },
+          { new: true }
+        ).lean() as Promise<ITripDocument | null>;
+      }
+    }
+  }
+
   return Trip.findByIdAndUpdate(
     tripId,
-    { $inc: { availableSeats: seats } },
+    { $inc: { availableSeats: seats }, $set: { isActive: true } },
     { new: true }
   ).lean() as Promise<ITripDocument | null>;
 }

@@ -116,7 +116,7 @@ export default function PaymentModal({
         await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 3000 : 2000));
         try {
           const verified = await processPayment.mutateAsync({
-            paymentRef: order.orderId!,
+            paymentRef: order.paymentRef || order.orderId!,
             scenario: 'success',
           });
           const status = (verified?.status || '').toLowerCase();

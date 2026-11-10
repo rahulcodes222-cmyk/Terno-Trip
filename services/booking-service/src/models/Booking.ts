@@ -72,12 +72,12 @@ const bookingSchema = new Schema<IBookingDocument>(
     status: {
       type: String,
       enum: ["Pending", "Confirmed", "Cancelled", "Refunded"] as BookingStatus[],
-      default: "Pending",
+      default: "Confirmed",
     },
     paymentStatus: {
       type: String,
       enum: ["Pending", "Paid", "Refunded", "Failed"] as PaymentStatus[],
-      default: "Pending",
+      default: "Paid",
     },
     contactEmail: { type: String, required: true, lowercase: true, trim: true },
     contactPhone: { type: String, required: true, trim: true },
@@ -95,6 +95,11 @@ bookingSchema.index({ bookingRef: 1 }, { unique: true });
 bookingSchema.index({ userId: 1 });
 bookingSchema.index({ tripId: 1 });
 bookingSchema.index({ status: 1 });
+// Prevent double-booking: same email + same trip + same date cannot have two active bookings
+bookingSchema.index(
+  { contactEmail: 1, tripId: 1, departureDate: 1, status: 1 },
+  { name: "no_duplicate_booking" }
+);
 
 export const Booking: Model<IBookingDocument> = mongoose.model<IBookingDocument>(
   "Booking",

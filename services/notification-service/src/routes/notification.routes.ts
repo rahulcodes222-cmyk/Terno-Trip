@@ -31,5 +31,9 @@ router.post("/api/v1/internal/notifications/booking-email", serviceAuth, sendBoo
 // ─── Brand Settings (update logo/name used in email templates) ────────────────
 router.post("/api/v1/internal/notifications/brand", serviceAuth, updateBrandSettings);
 
+// ─── Admin route — called by frontend admin settings page via api-gateway ─────
+// api-gateway injects x-internal-secret automatically for proxied requests
+router.post("/api/v1/admin/notifications/brand", serviceAuth, updateBrandSettings);
+
 export default router;
 

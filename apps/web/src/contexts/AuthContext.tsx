@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const login = useCallback(async (email: string, password: string) => {
+    qc.clear();
     await apiClient.post('/api/v1/auth/login', { email, password });
     await qc.invalidateQueries({ queryKey: ['auth', 'me'] });
   }, [qc]);
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string;
     password: string;
   }) => {
+    qc.clear();
     // Auth-service stores a single "name" field — combine firstName + lastName
     await apiClient.post('/api/v1/auth/register', {
       name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiClient.post('/api/v1/auth/logout');
     } finally {
+      qc.clear();
       qc.setQueryData(['auth', 'me'], null);
       await qc.invalidateQueries({ queryKey: ['auth', 'me'] });
     }

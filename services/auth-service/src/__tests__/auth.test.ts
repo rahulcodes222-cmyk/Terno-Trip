@@ -25,8 +25,8 @@ vi.mock("../models/User.js", () => {
   return {
     User: {
       create: vi.fn().mockResolvedValue(mockUser),
-      findOne: vi.fn().mockResolvedValue(null),
-      findById: vi.fn().mockResolvedValue(null),
+      findOne: vi.fn().mockReturnValue({ select: vi.fn().mockResolvedValue(null) }),
+      findById: vi.fn().mockReturnValue({ select: vi.fn().mockResolvedValue(null) }),
     },
     mockUser,
   };
@@ -140,7 +140,7 @@ describe("Auth Controller", () => {
   describe("login", () => {
     it("returns 401 for unknown email", async () => {
       const { User } = await import("../models/User.js");
-      (User.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (User.findOne as ReturnType<typeof vi.fn>).mockReturnValueOnce({ select: vi.fn().mockResolvedValueOnce(null) });
 
       const { login } = await import("../controllers/auth.controller.js");
       const { req, res, next } = mockReqRes({ email: "nobody@example.com", password: "pass" });
@@ -163,7 +163,7 @@ describe("Auth Controller", () => {
         comparePassword: vi.fn().mockResolvedValue(false),
         save: vi.fn().mockResolvedValue(undefined),
       };
-      (User.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(fakeUser);
+      (User.findOne as ReturnType<typeof vi.fn>).mockReturnValueOnce({ select: vi.fn().mockResolvedValueOnce(fakeUser) });
 
       const { login } = await import("../controllers/auth.controller.js");
       const { req, res, next } = mockReqRes({ email: "test@example.com", password: "wrongpass" });
@@ -186,7 +186,7 @@ describe("Auth Controller", () => {
         comparePassword: vi.fn().mockResolvedValue(true),
         save: vi.fn().mockResolvedValue(undefined),
       };
-      (User.findOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce(fakeUser);
+      (User.findOne as ReturnType<typeof vi.fn>).mockReturnValueOnce({ select: vi.fn().mockResolvedValueOnce(fakeUser) });
 
       const { login } = await import("../controllers/auth.controller.js");
       const { req, res, next } = mockReqRes({ email: "test@example.com", password: "correctpass" });
@@ -217,7 +217,7 @@ describe("Auth Controller", () => {
         markModified: vi.fn(),
         password: "hashed",
       };
-      (User.findById as ReturnType<typeof vi.fn>).mockResolvedValueOnce(fakeUser);
+      (User.findById as ReturnType<typeof vi.fn>).mockReturnValueOnce({ select: vi.fn().mockResolvedValueOnce(fakeUser) });
 
       const { changePassword } = await import("../controllers/auth.controller.js");
       const { req, res, next } = mockReqRes(

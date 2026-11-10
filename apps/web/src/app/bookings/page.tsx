@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMyBookings, useCancelBooking } from '@/hooks/useBookings';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ export default function BookingsPage() {
 
 function BookingsContent() {
   const router = useRouter();
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState<Tab>('All');
   const [cancelId, setCancelId] = useState<string | null>(null);
@@ -33,7 +35,14 @@ function BookingsContent() {
   const { data, isLoading } = useMyBookings(page);
   const cancelBooking = useCancelBooking();
 
-  const bookings = data?.data ?? [];
+  const allBookings = data?.data ?? [];
+  const bookings = allBookings.filter((b) => {
+    if (!user) return false;
+    return (
+      (user._id && b.userId === user._id) ||
+      (user.email && b.contactEmail?.toLowerCase() === user.email.toLowerCase())
+    );
+  });
   const pagination = data?.pagination;
 
   const filtered = bookings.filter((b) => {

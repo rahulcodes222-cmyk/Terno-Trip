@@ -4,16 +4,16 @@ import type { IBooking, ApiResponse, PaginatedResponse } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useMyBookings(page = 1) {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   return useQuery({
-    queryKey: ['bookings', 'my', page],
+    queryKey: ['bookings', 'my', user?._id || user?.email, page],
     queryFn: async () => {
       const res = await apiClient.get<PaginatedResponse<IBooking>>('/api/v1/bookings/my', {
         params: { page, limit: 10 },
       });
       return res.data;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !!(user?._id || user?.email),
   });
 }
 
