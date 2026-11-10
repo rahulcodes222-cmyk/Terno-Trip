@@ -11,17 +11,16 @@
 
   body {
     @apply font-sans text-gray-900;
-    /* Light gray page background — exact from screenshot */
     background-color: #F5F7FA;
     font-size: 15px;
     line-height: 1.6;
   }
 
-  /* Scrollbar */
+  /* Scrollbar — pirttrip orange */
   ::-webkit-scrollbar        { width: 5px; }
   ::-webkit-scrollbar-track  { background: #F0F0F0; }
-  ::-webkit-scrollbar-thumb  { background: #FF6B00; border-radius: 99px; }
-  ::-webkit-scrollbar-thumb:hover { background: #E65100; }
+  ::-webkit-scrollbar-thumb  { background: #FFA300; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: #E89300; }
 }
 
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
@@ -29,3 +28,52 @@
 
 .animate-fade-in  { animation: fadeIn  0.7s ease forwards; }
 .animate-slide-up { animation: slideUp 0.5s ease forwards; }
+
+/* ── Pirttrip-specific component styles ── */
+@layer components {
+  /* Category pill ribbon badge */
+  .pirttrip-ribbon {
+    @apply inline-block px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-sm;
+    border-radius: 4px 4px 0 0;
+  }
+
+  /* Category card image wrapper */
+  .pirttrip-category-card {
+    @apply relative group shrink-0;
+    width: 140px;
+    height: 140px;
+  }
+
+  /* Pirttrip primary button gradient */
+  .pirttrip-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-bold text-white transition-colors duration-200;
+    background: linear-gradient(135deg, #FFA300 0%, #FF8C00 100%);
+  }
+  .pirttrip-btn-primary:hover {
+    background: linear-gradient(135deg, #E89300 0%, #C17A00 100%);
+  }
+
+  /* Pirttrip outline/black button */
+  .pirttrip-btn-black {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold text-white bg-gray-900 transition-colors duration-200;
+  }
+  .pirttrip-btn-black:hover {
+    @apply bg-gray-800;
+  }
+
+  /* Search input — pirttrip style */
+  .pirttrip-search-input {
+    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFA300] focus:border-transparent;
+  }
+
+  /* Section heading */
+  .pirttrip-section-header {
+    @apply mb-8 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between;
+  }
+  .pirttrip-eyebrow {
+    @apply mb-1 text-xs font-bold uppercase tracking-widest text-[#FFA300];
+  }
+  .pirttrip-title {
+    @apply text-2xl font-extrabold text-gray-900 sm:text-3xl;
+  }
+}

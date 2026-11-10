@@ -9,7 +9,34 @@ const config: Config = {
         container: '90vw',
       },
       colors: {
-        /* ── Primary orange — exact from screenshot CTA button ── */
+        /* ── Pirttrip primary orange/yellow — matches pirttrip.com ── */
+        pirttrip: {
+          DEFAULT: '#FFA300',
+          50:  '#FFF7E6',
+          100: '#FFEEBA',
+          200: '#FFE38C',
+          300: '#FFD86B',
+          400: '#FFCD4B',
+          500: '#FFA300',
+          600: '#E89300',
+          700: '#C17A00',
+          800: '#9A6300',
+          900: '#664000',
+        },
+        /* ── Dark navy for text/headers ── */
+        navy: {
+          DEFAULT: '#1E3A5F',
+          50:  '#EEF2F7',
+          100: '#D6E0ED',
+          500: '#1E3A5F',
+          600: '#162C4A',
+          700: '#0F1E33',
+          800: '#0A1525',
+          900: '#060D17',
+        },
+        /* ── Page background ── */
+        page: '#F5F7FA',
+        /* ── Keep legacy primary for internal pages ── */
         primary: {
           DEFAULT: '#FF6B00',
           50:  '#FFF3E0',
@@ -23,19 +50,6 @@ const config: Config = {
           800: '#8D2400',
           900: '#5D1500',
         },
-        /* ── Navy blue — "Terno" logo text + hero dark bg ────── */
-        navy: {
-          DEFAULT: '#1E3A5F',
-          50:  '#EEF2F7',
-          100: '#D6E0ED',
-          500: '#1E3A5F',
-          600: '#162C4A',
-          700: '#0F1E33',
-          800: '#0A1525',
-          900: '#060D17',
-        },
-        /* ── Page background — light gray like demo ─────────── */
-        page: '#F5F7FA',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
