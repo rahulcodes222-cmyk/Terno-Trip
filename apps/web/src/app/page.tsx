@@ -8,6 +8,7 @@ import { useDestinations } from '@/hooks/useDestinations';
 import PageLayout from '@/components/layout/PageLayout';
 import PirttripHero from '@/components/home/PirttripHero';
 import HowItWorks from '@/components/home/HowItWorks';
+import PartnersAndSocial from '@/components/home/PartnersAndSocial';
 import TripCard from '@/components/trips/TripCard';
 import TripCarousel from '@/components/home/TripCarousel';
 import DestinationCard from '@/components/home/DestinationCard';
@@ -302,6 +303,9 @@ export default function HomePage() {
       <div id="how-it-works">
         <HowItWorks />
       </div>
+
+      {/* 4b. Partners & Instagram Social Section */}
+      <PartnersAndSocial />
 
       {/* 5. Popular Destinations */}
       <section id="destinations" className="bg-white px-4 py-14 sm:px-6 lg:px-8">
